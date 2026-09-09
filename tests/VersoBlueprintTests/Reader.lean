@@ -2,6 +2,7 @@ import VersoBlueprint.Informal.Block.Render
 import VersoBlueprint.Informal.Block.Store
 import VersoBlueprint.ReaderDocument
 import VersoBlueprintTests.Blueprint.Support
+import VersoBlueprintTests.Editorial
 
 open Informal Lean
 open Verso.VersoBlueprintTests.Blueprint.Support
@@ -14,6 +15,7 @@ private def node : BlockData := {
   kind := .statement .theorem, label := `fixture, count := 1
   readerContext := some reader
   paperIdentity := some { label := "Theorem 3", href := "https://example.org/paper#page=2" }
+  hasStatementDiscrepancy := true
 }
 
 /-- info: true -/
@@ -36,9 +38,9 @@ private def node : BlockData := {
 #eval show IO Bool from do
   let stored ← IO.ofExcept (fromJson? (α := StoredBlockData) (toJson node.toStoredData))
   let restored := (mergeStoredBlockData { node.toStoredData with
-    paperIdentity := none, readerContext := none } stored).toBlockData
+    paperIdentity := none, readerContext := none, hasStatementDiscrepancy := false } stored).toBlockData
   return restored.paperIdentity.map (·.label) == some "Theorem 3" &&
-    restored.readerContext.map (·.commit) == some "abc123"
+    restored.readerContext.map (·.commit) == some "abc123" && restored.hasStatementDiscrepancy
 
 /-- info: true -/
 #guard_msgs in

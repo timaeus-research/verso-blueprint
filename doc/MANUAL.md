@@ -238,6 +238,11 @@ This example shows the core pattern:
 
 ## Core Block Forms
 
+For the distinction between mathematical prose, harmless notation translation,
+implementation commentary, and unresolved statement discrepancies, see
+[Editorial annotations](EDITORIAL_ANNOTATIONS.md). These native blocks do not
+replace mathematical equivalence or counterexample proofs.
+
 Blueprint chapters commonly use:
 
 - `:::definition "label_1"`

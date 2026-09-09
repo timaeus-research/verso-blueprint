@@ -150,6 +150,7 @@ def mergeStoredBlockData (existing incoming : StoredBlockData) : StoredBlockData
       kind := kind
       paperIdentity := existing.paperIdentity <|> incoming.paperIdentity
       readerContext := existing.readerContext <|> incoming.readerContext
+      hasStatementDiscrepancy := existing.hasStatementDiscrepancy || incoming.hasStatementDiscrepancy
       parent := existing.parent <|> incoming.parent
       partPrefix := existing.partPrefix <|> incoming.partPrefix
       globalCount := existing.globalCount <|> incoming.globalCount

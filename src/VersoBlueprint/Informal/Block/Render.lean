@@ -7,6 +7,7 @@ Author: Emilio J. Gallego Arias
 import VersoManual
 import VersoBlueprint.Informal.Block.Model
 import VersoBlueprint.Informal.MetadataView
+import VersoBlueprint.Editorial
 
 namespace Informal
 
@@ -755,6 +756,10 @@ def renderInformalBlockHtml (data : BlockData) (ctx : InformalBlockRenderContext
     | .proof => .empty
     | .statement _ => renderStatementMetadataPanel data
   let headerExtras := ctx.headerExtras.withSourceRefs ctx.sourceRefs
+  let headerExtras := if data.hasStatementDiscrepancy then
+    let warning := HeaderExtra.custom `correspondence Editorial.correspondenceWarning
+    { headerExtras with custom := headerExtras.custom.push warning }
+    else headerExtras
   let headerExtras := match data.readerContext with
     | none => headerExtras
     | some reader =>
