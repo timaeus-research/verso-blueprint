@@ -756,7 +756,7 @@ def renderInformalBlockHtml (data : BlockData) (ctx : InformalBlockRenderContext
     | .proof => .empty
     | .statement _ => renderStatementMetadataPanel data
   let headerExtras := ctx.headerExtras.withSourceRefs ctx.sourceRefs
-  let headerExtras := if data.hasStatementDiscrepancy then
+  let headerExtras := if data.hasFormalizationGap then
     let warning := HeaderExtra.custom `correspondence Editorial.correspondenceWarning
     { headerExtras with custom := headerExtras.custom.push warning }
     else headerExtras

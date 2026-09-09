@@ -9,34 +9,30 @@ namespace Informal.Editorial
 inductive Kind where
   | translation
   | «meta»
-  | discrepancy
+  | formalizationGap
 deriving BEq, FromJson, ToJson, Quote
 
 def Kind.key : Kind → String
   | .translation => "translation"
   | .meta => "meta"
-  | .discrepancy => "discrepancy"
+  | .formalizationGap => "formalizationGap"
 
 def Kind.title : Kind → String
   | .translation => "Notation in Lean"
   | .meta => "Formalization note"
-  | .discrepancy => "Unresolved statement discrepancy"
-
-def discrepancyCaveat : String :=
-  "A proof-status badge concerns the Lean declaration, not its correspondence with the paper. This obligation remains open."
+  | .formalizationGap => "Formalization gap"
 
 def correspondenceWarning : Output.Html :=
   .tag "span" #[("class", "bp-correspondence-warning")]
-    (.text true "Statement correspondence unresolved")
+    (.text true "Formalization gap")
 
 def css : String := r##"
 .bp-editorial { margin:1rem 0; padding:.7rem 1rem; border-left:3px solid var(--bp-color-border-soft,#cbd5e1); background:var(--bp-color-bg-subtle,#f8fafc); font-style:normal; }
 .bp-editorial-title { font-weight:650; font-size:.9rem; margin-bottom:.4rem; }
 .bp-editorial-content > :first-child { margin-top:0; }
 .bp-editorial-content > :last-child { margin-bottom:0; }
-.bp-editorial[data-kind=discrepancy] { border-left:4px solid #b45309; background:light-dark(#fff7ed,#302015); }
-.bp-editorial[data-kind=discrepancy] > .bp-editorial-title { color:light-dark(#9a3412,#fdba74); }
-.bp-editorial-caveat { margin:.6rem 0 0; font-size:.85rem; }
+.bp-editorial[data-kind=formalizationGap] { border-left:4px solid #b45309; background:light-dark(#fff7ed,#302015); }
+.bp-editorial[data-kind=formalizationGap] > .bp-editorial-title { color:light-dark(#9a3412,#fdba74); }
 .bp-correspondence-warning { font-size:.8rem; font-weight:600; color:light-dark(#9a3412,#fdba74); }
 "##
 
@@ -45,9 +41,6 @@ def render (kind : Kind) (contents : Array Output.Html) : Output.Html :=
   {{<aside class="bp-editorial" data-kind={{kind.key}} aria-label={{kind.title}}>
     <div class="bp-editorial-title">{{.text true kind.title}}</div>
     <div class="bp-editorial-content">{{.seq contents}}</div>
-    {{if kind == .discrepancy then
-      {{<p class="bp-editorial-caveat">{{.text true discrepancyCaveat}}</p>}}
-      else .empty}}
   </aside>}}
 
 block_extension Block.editorial (kind : Kind) where
@@ -64,18 +57,17 @@ block_extension Block.editorial (kind : Kind) where
       | Verso.reportError "Malformed editorial annotation"
         return .empty
     let body ← blocks.mapM goB
-    let body := if kind == .discrepancy then body.push (.text discrepancyCaveat) else body
     return Informal.TeX.quotedBlock kind.title body
 
 /-- Inspect the document tree, not rendered HTML or author-supplied approval flags. -/
-partial def hasDiscrepancy : Doc.Block Manual → Bool
+partial def hasFormalizationGap : Doc.Block Manual → Bool
   | .other ext children =>
     (ext.name == ``Block.editorial &&
-      (fromJson? (α := Kind) ext.data).toOption == some .discrepancy) ||
-      children.any hasDiscrepancy
-  | .concat bs | .blockquote bs => bs.any hasDiscrepancy
-  | .ul items | .ol _ items => items.any fun item => item.contents.any hasDiscrepancy
-  | .dl items => items.any fun item => item.desc.any hasDiscrepancy
+      (fromJson? (α := Kind) ext.data).toOption == some .formalizationGap) ||
+      children.any hasFormalizationGap
+  | .concat bs | .blockquote bs => bs.any hasFormalizationGap
+  | .ul items | .ol _ items => items.any fun item => item.contents.any hasFormalizationGap
+  | .dl items => items.any fun item => item.desc.any hasFormalizationGap
   | _ => false
 
 private def expand (kind : Kind) : DirectiveExpanderOf Unit
@@ -94,6 +86,6 @@ namespace Informal
 @[directive] def «meta» : DirectiveExpanderOf Unit := Editorial.expand .meta
 
 /-- An outstanding statement-correspondence obligation, never an accepted difference. -/
-@[directive] def discrepancy : DirectiveExpanderOf Unit := Editorial.expand .discrepancy
+@[directive] def formalizationGap : DirectiveExpanderOf Unit := Editorial.expand .formalizationGap
 
 end Informal

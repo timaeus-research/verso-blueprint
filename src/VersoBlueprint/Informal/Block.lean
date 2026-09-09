@@ -71,7 +71,7 @@ block_extension Block.informal (data : BlockData) where
       pure none
     | some blockData =>
       let blockData := blockData.withTraversalNumberingContext (← read)
-      let blockData := { blockData with hasStatementDiscrepancy := _contents.any Editorial.hasDiscrepancy }
+      let blockData := { blockData with hasFormalizationGap := _contents.any Editorial.hasFormalizationGap }
       registerTraversedBlockAssets id blockData _contents
       saveTraversedBlockData id blockData
       if let some sourceRef := blockData.sourceRef then
@@ -105,9 +105,9 @@ block_extension Block.informal (data : BlockData) where
         let s ← HtmlT.state
         let ctxt ← HtmlT.context
         let data := data.withResolvedNumberingInContext s ctxt
-        let hasDiscrepancy := blocks.any Editorial.hasDiscrepancy ||
-          ((resolveStoredBlockData? s data.label).map (·.hasStatementDiscrepancy) |>.getD false)
-        let data := { data with hasStatementDiscrepancy := hasDiscrepancy }
+        let hasFormalizationGap := blocks.any Editorial.hasFormalizationGap ||
+          ((resolveStoredBlockData? s data.label).map (·.hasFormalizationGap) |>.getD false)
+        let data := { data with hasFormalizationGap := hasFormalizationGap }
         let relatedPanelContext := RelatedPanel.RelationContext.ofState s
         let markup :=
           (Informal.TraversalIndex.ExternalMarkup.data? s data.label).map (·.markup.toArray) |>.getD #[]
@@ -178,7 +178,7 @@ block_extension Block.informal (data : BlockData) where
           renderExternalMarkupHeaderExtra? markup
         let foldInformalBlock :=
           match data.kind with
-          | .proof => data.foldProofBlock && !blocks.any Editorial.hasDiscrepancy
+          | .proof => data.foldProofBlock && !blocks.any Editorial.hasFormalizationGap
           | .statement _ => false
         let headerExtras : HeaderExtras :=
           match data.kind with

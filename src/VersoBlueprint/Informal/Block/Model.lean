@@ -167,7 +167,7 @@ structure BlockData where
   paperIdentity : Option Reader.PaperIdentity := none
   readerContext : Option Reader.Context := none
   /-- Derived from native child blocks during traversal, not an author verdict. -/
-  hasStatementDiscrepancy : Bool := false
+  hasFormalizationGap : Bool := false
   kind : Data.InProgressKind := .proof
   /-- Optional code hint used for statement blocks (`.proof` always ignores this). -/
   codeData : Option BlockCodeData := none
@@ -221,7 +221,7 @@ main semantic node index.
 structure StoredBlockData where
   paperIdentity : Option Reader.PaperIdentity := none
   readerContext : Option Reader.Context := none
-  hasStatementDiscrepancy : Bool := false
+  hasFormalizationGap : Bool := false
   kind : Data.InProgressKind := .proof
   label : Data.Label
   /-- Source location result for the user-written label token. -/
@@ -251,7 +251,7 @@ deriving FromJson, ToJson, Quote
 def BlockData.toStoredData (data : BlockData) : StoredBlockData := {
   paperIdentity := data.paperIdentity
   readerContext := data.readerContext
-  hasStatementDiscrepancy := data.hasStatementDiscrepancy
+  hasFormalizationGap := data.hasFormalizationGap
   kind := data.kind
   label := data.label
   sourceLocation := data.sourceLocation
@@ -278,7 +278,7 @@ def StoredBlockData.toBlockData (data : StoredBlockData)
     (codeData : Option BlockCodeData := none) : BlockData := {
   paperIdentity := data.paperIdentity
   readerContext := data.readerContext
-  hasStatementDiscrepancy := data.hasStatementDiscrepancy
+  hasFormalizationGap := data.hasFormalizationGap
   kind := data.kind
   codeData
   label := data.label

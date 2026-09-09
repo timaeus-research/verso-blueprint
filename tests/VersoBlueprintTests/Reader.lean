@@ -15,7 +15,7 @@ private def node : BlockData := {
   kind := .statement .theorem, label := `fixture, count := 1
   readerContext := some reader
   paperIdentity := some { label := "Theorem 3", href := "https://example.org/paper#page=2" }
-  hasStatementDiscrepancy := true
+  hasFormalizationGap := true
 }
 
 /-- info: true -/
@@ -38,9 +38,9 @@ private def node : BlockData := {
 #eval show IO Bool from do
   let stored ← IO.ofExcept (fromJson? (α := StoredBlockData) (toJson node.toStoredData))
   let restored := (mergeStoredBlockData { node.toStoredData with
-    paperIdentity := none, readerContext := none, hasStatementDiscrepancy := false } stored).toBlockData
+    paperIdentity := none, readerContext := none, hasFormalizationGap := false } stored).toBlockData
   return restored.paperIdentity.map (·.label) == some "Theorem 3" &&
-    restored.readerContext.map (·.commit) == some "abc123" && restored.hasStatementDiscrepancy
+    restored.readerContext.map (·.commit) == some "abc123" && restored.hasFormalizationGap
 
 /-- info: true -/
 #guard_msgs in
