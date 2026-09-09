@@ -273,7 +273,11 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let accepted ← Environment.push
       label resolved.envKind resolved.codeHint resolved.parent resolved.priority
       resolved.owner resolved.tags resolved.effort resolved.prUrl resolved.statementUses
-    let contents ← parsedContents.body.mapM elabBlock
+    -- Retained bodies are compiled now, before the enclosing document binds its
+    -- reconstruction placeholder. Native Lean roles must serialize their hover
+    -- data directly so these independently evaluated blocks remain closed.
+    let contents ← (show DocElabM _ from fun ctx =>
+      (parsedContents.body.mapM elabBlock) { ctx with docReconstructionPlaceholder := none })
     if !accepted then
       return ← ``(Block.concat #[$contents,*])
     let (previewBlocks, retainedContents) ←

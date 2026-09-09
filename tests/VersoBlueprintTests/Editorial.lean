@@ -9,6 +9,14 @@ set_option doc.verso true
 
 #docs (Manual) editorialDoc "Editorial annotations" :=
 :::::::
+:::definition "editorial.threshold"
+The successor threshold.
+:::
+
+```lean "editorial.threshold"
+def editorialThreshold (n : Nat) : Nat := n + 1
+```
+
 :::translation
 The notation {Verso.Genre.Manual.InlineLean.lean}`Nat` retains its Lean hover information.
 :::
@@ -20,6 +28,8 @@ Mathematical statement remains ordinary prose.
 
 :::discrepancy
 The equivalence lemma is still missing. This is not a completed correspondence.
+The threshold {Verso.Genre.Manual.InlineLean.lean}`editorialThreshold 1`
+was declared in a preceding Lean block.
 :::
 ::::
 :::::::
