@@ -26,6 +26,7 @@ import VersoBlueprint.Html
 import VersoBlueprint.Process
 import VersoBlueprint.Resolve
 import VersoBlueprint.Source.Data
+import VersoBlueprint.ReaderDocument
 import VersoBlueprint.TeX.Cleanup
 import VersoBlueprint.TeX.Pdf
 import VersoBlueprint.TraversalIndex
@@ -929,6 +930,8 @@ metadata. Do not add rendered HTML bodies here; put reusable presentation in
 structure Entry where
   /-- Composite manifest lookup key for this target family. -/
   key : String
+  paperIdentity : Option Informal.Reader.PaperIdentity := none
+  readerContext : Option Informal.Reader.Context := none
   /-- Manifest target family. -/
   targetKind : EntryKind
   /-- Canonical target label: informal label, Lean declaration name, citation label, or external-markup witness label. -/
@@ -1000,6 +1003,8 @@ def Entry.primarySource? (entry : Entry) : Option Informal.Source.Ref :=
 
 /-- Convert manifest entry metadata to the shared informal block model. -/
 def Entry.blockData (entry : Entry) : Informal.BlockData := {
+  paperIdentity := entry.paperIdentity
+  readerContext := entry.readerContext
   kind := entry.blockKind
   codeData := entry.codeData
   sourceRef := entry.primarySource?
@@ -2190,6 +2195,8 @@ private def blockSemanticManifestEntry
     codeData
     externalMarkup := externalMarkup?.getD (externalMarkupArray state preview.label)
     sources := sourceRefsForBlockLabel state preview.label
+    paperIdentity := blockData?.bind (·.paperIdentity)
+    readerContext := blockData?.bind (·.readerContext)
     uses := blockData?.map (buildUsesRelations state ·) |>.getD #[]
     usedBy := blockData?.map (buildUsedByRelations state ·) |>.getD #[]
     ownerDisplayName := blockData?.bind (·.ownerDisplayName)
@@ -2792,6 +2799,7 @@ def blueprintMainWithPreviewData
     (extensionImpls : ExtensionImpls)
     (config : RenderConfig := {})
     (extraSteps : List BlueprintExtraStep := []) : IO UInt32 := do
+  let text ← Informal.Reader.prepare text
   let config := withBlueprintAssets config
   let (dumped?, options, externalMarkupConfig) ← handleCliFlags text options extensionImpls config
   if let some code := dumped? then

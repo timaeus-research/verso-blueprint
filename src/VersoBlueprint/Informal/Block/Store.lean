@@ -148,6 +148,8 @@ def mergeStoredBlockData (existing incoming : StoredBlockData) : StoredBlockData
     | .proof, .proof => existing.kind
   { existing with
       kind := kind
+      paperIdentity := existing.paperIdentity <|> incoming.paperIdentity
+      readerContext := existing.readerContext <|> incoming.readerContext
       parent := existing.parent <|> incoming.parent
       partPrefix := existing.partPrefix <|> incoming.partPrefix
       globalCount := existing.globalCount <|> incoming.globalCount

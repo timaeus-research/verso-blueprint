@@ -89,7 +89,7 @@ block_extension Block.informal (data : BlockData) where
       let title := data.displayTitle st
       let body ← blocks.mapM goB
       pure <| Informal.TeX.quotedBlock title body
-  extraCss := Informal.Block.Assets.blockCssAssets
+  extraCss := Reader.css :: Informal.Block.Assets.blockCssAssets
   extraJs := Informal.Block.Assets.blockJsAssets
   toHtml :=
     open Verso.Doc.Html in
@@ -127,6 +127,7 @@ block_extension Block.informal (data : BlockData) where
           | .proof => none
           | .statement _ => data.codeData
         let codeSource := BlockCodeData.ofHintAndInline codeHint? codeData?
+        let data := { data with codeData := codeSource }
         let externalDecls := codeHint?.map (·.externalDecls) |>.getD #[]
         let getDeclHref (decl : Name) : Option String :=
           Resolve.resolveInformalDeclHref? s data.label decl

@@ -7,6 +7,7 @@ Author: Emilio J. Gallego Arias
 import Lean
 import VersoBlueprint.Data
 import VersoBlueprint.Source.Data
+import VersoBlueprint.Reader
 
 namespace Informal
 
@@ -163,6 +164,8 @@ def BlockCodeData.externalDecls : BlockCodeData → Array Data.ExternalRef
   | _ => #[]
 
 structure BlockData where
+  paperIdentity : Option Reader.PaperIdentity := none
+  readerContext : Option Reader.Context := none
   kind : Data.InProgressKind := .proof
   /-- Optional code hint used for statement blocks (`.proof` always ignores this). -/
   codeData : Option BlockCodeData := none
@@ -214,6 +217,8 @@ render/runtime payloads belong to dedicated traversal indexes rather than the
 main semantic node index.
 -/
 structure StoredBlockData where
+  paperIdentity : Option Reader.PaperIdentity := none
+  readerContext : Option Reader.Context := none
   kind : Data.InProgressKind := .proof
   label : Data.Label
   /-- Source location result for the user-written label token. -/
@@ -241,6 +246,8 @@ structure StoredBlockData where
 deriving FromJson, ToJson, Quote
 
 def BlockData.toStoredData (data : BlockData) : StoredBlockData := {
+  paperIdentity := data.paperIdentity
+  readerContext := data.readerContext
   kind := data.kind
   label := data.label
   sourceLocation := data.sourceLocation
@@ -265,6 +272,8 @@ def BlockData.toStoredData (data : BlockData) : StoredBlockData := {
 
 def StoredBlockData.toBlockData (data : StoredBlockData)
     (codeData : Option BlockCodeData := none) : BlockData := {
+  paperIdentity := data.paperIdentity
+  readerContext := data.readerContext
   kind := data.kind
   codeData
   label := data.label

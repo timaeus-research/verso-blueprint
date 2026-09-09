@@ -96,7 +96,7 @@ private def blockKindRenderStyle (data : BlockData) : BlockKindRenderStyle :=
 
 /-- Render the caption/label row shared by informal block shells. -/
 def renderBlockTitleRow (style : BlockKindRenderStyle)
-    (labelText numberText captionText : String) :
+    (labelText numberText captionText : String) (paper : Verso.Output.Html := .empty) :
     Verso.Output.Html :=
   open Verso.Output.Html in
   let titleRowClass :=
@@ -110,6 +110,7 @@ def renderBlockTitleRow (style : BlockKindRenderStyle)
     <div class={{titleRowClass}}>
       <span class={{captionClass}} title={{labelText}}> {{.text true captionText}} </span>
       {{ if style.showLabel then {{<span class={{labelClass}}> {{.text true numberText}} </span>}} else .empty }}
+      {{paper}}
     </div>
   }}
 
@@ -680,6 +681,7 @@ stable Blueprint wrapper, heading, title row, extras slot, metadata slot, and
 content container assembly.
 -/
 structure InformalBlockShell where
+  paper : Verso.Output.Html := .empty
   style : BlockKindRenderStyle
   labelText : String
   numberText : String
@@ -692,7 +694,7 @@ structure InformalBlockShell where
   showHeader : Bool := true
 
 private def renderShellTitleRow (shell : InformalBlockShell) : Verso.Output.Html :=
-  let titleRow := renderBlockTitleRow shell.style shell.labelText shell.numberText shell.captionText
+  let titleRow := renderBlockTitleRow shell.style shell.labelText shell.numberText shell.captionText shell.paper
   match shell.titleRowAttrs? with
   | some attrs => .tag "a" attrs titleRow
   | none => titleRow
@@ -753,8 +755,24 @@ def renderInformalBlockHtml (data : BlockData) (ctx : InformalBlockRenderContext
     | .proof => .empty
     | .statement _ => renderStatementMetadataPanel data
   let headerExtras := ctx.headerExtras.withSourceRefs ctx.sourceRefs
+  let headerExtras := match data.readerContext with
+    | none => headerExtras
+    | some reader =>
+      let target := reader.baseUrl ++ "find/?domain=Informal.Block.informal&name=" ++ Reader.encode (Reader.labelString data.label)
+      let decls : Array String := match data.codeData with
+        | some (.inline code) => code.declarations.map (fun (d : CodeDeclData) => d.name.toString)
+        | some (.external refs) => refs.map (fun (d : Data.ExternalRef) => d.canonical.toString)
+        | none => #[]
+      let details := (data.paperIdentity.map ("Paper: " ++ ·.label)).getD "" ++
+        (if decls.isEmpty then "" else "\nLean: " ++ String.intercalate ", " decls.toList) ++
+        (match data.kind with | .proof => "\nBlock: proof" | _ => "")
+      { headerExtras with custom := headerExtras.custom.push <|
+          HeaderExtra.ofHtml (.custom `issue) (Reader.issue reader (Reader.labelString data.label) target details) }
   renderInformalBlockShell
     {
+      paper := match data.kind with
+        | .proof => .empty
+        | .statement _ => data.paperIdentity.map Reader.paper |>.getD .empty
       style
       labelText
       numberText := ctx.numberText

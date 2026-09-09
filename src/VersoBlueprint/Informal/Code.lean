@@ -134,7 +134,17 @@ block_extension Block.informalCode (data : InlineCodeData) where
           getDeclHref
       let panelAttrs := attrs.push ("data-bp-proof-fold", if foldProofs then "on" else "off")
       let panelBody := .seq (← blocks.mapM goB)
-      pure <| mkCodePanel panelHeader panelSummary.summaryTitle panelSummary.indicator panelBody panelAttrs
+      let feedback := match Informal.TraversalIndex.Nodes.data? s label with
+        | some b => match b.readerContext with
+          | some reader =>
+            let target := reader.baseUrl ++ String.intercalate "/" ctxt.path.toList ++
+              (if ctxt.path.isEmpty then "" else "/") ++ "#" ++ (attrs[0]?.map (·.2)).getD ""
+            let decls := cdata.declarations.map (·.name.toString)
+            Reader.issue reader (label.toString ++ " (Lean code)") target
+              ("Lean: " ++ String.intercalate ", " decls.toList)
+          | none => .empty
+        | none => .empty
+      pure <| mkCodePanel panelHeader panelSummary.summaryTitle (feedback ++ panelSummary.indicator) panelBody panelAttrs
         (folded := foldCodeBlock)
 
 structure CodeConfig where
