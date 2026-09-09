@@ -1,5 +1,13 @@
 # Project Notes
 
+## Timaeus fork
+
+Read `TIMAEUS.md` for this fork's integration and maintenance policy.
+Our development branch is `timaeus/v4.33.0`; pass it explicitly as the
+worktree harness base. The upstream branch/backport and PR policies below
+apply when contributing upstream, not to changes maintained only in this
+fork. Use the remaining development and verification guidance below.
+
 ## Scope
 
 - Repository root: `/home/egallego/lean/verso-blueprint`
