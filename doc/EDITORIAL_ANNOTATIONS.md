@@ -1,6 +1,6 @@
 # Editorial annotations
 
-Import `VersoBlueprint` to use five native, parameter-free directives. Their
+Import `VersoBlueprint` to use six native, parameter-free directives. Their
 bodies are ordinary Verso blocks: references, mathematics, Lean roles and their
 hover information retain their usual rendering. There is no HTML post-processing.
 
@@ -17,8 +17,15 @@ hover information retain their usual rendering. There is no HTML post-processing
 - `:::correction` renders **Correction**. Explain an established correction and
   link to the counterexample, exact-negation corollary, and corrected statement.
   The label itself supplies no evidence and does not certify the linked proofs.
+- `:::outOfScope` renders **Out of scope**. Explain deliberately omitted material
+  and why it is excluded. Material introduced but unused by the paper's results
+  is a valid candidate. This is a coverage decision, not a mathematical verdict.
 
-Missing definitions and statements are TODOs, not optional scope exclusions.
+Missing in-scope definitions and statements are TODOs. A TODO may resolve by an
+explicit, justified scope exclusion, including for definitions and statements.
+Do not exclude prerequisites of a result still claimed in scope: supply them or
+explicitly narrow coverage of the affected results too. Scope notes do not hide
+nested TODOs or discharge correspondence obligations.
 A faithful statement may deliberately have a sorried proof: missing proofs alone
 use existing proof-status tracking and do not require a TODO. Unproved equivalence
 or correction evidence still leaves correspondence unsettled, so retain a TODO.
@@ -74,5 +81,5 @@ evidence that the formalization corresponds to the paper.
 Implementation: `src/VersoBlueprint/Editorial.lean`. The theorem/definition
 renderer detects nested TODO blocks from the Verso document tree, not
 from rendered HTML. CSS hooks are `.bp-editorial` with
-`data-kind="translation|meta|formalizationTodo|clarification|correction"`, `.bp-editorial-title`,
+`data-kind="translation|meta|formalizationTodo|clarification|correction|outOfScope"`, `.bp-editorial-title`,
 `.bp-editorial-content`, and `.bp-correspondence-warning`.

@@ -29,6 +29,9 @@ The successor convention is explicit in the preceding definition.
 :::correction
 A correction annotation explains linked evidence; it does not certify a proof.
 :::
+:::outOfScope
+An unused variant is omitted; no retained result depends on it.
+:::
 ::::theorem "editorial.fixture"
 Mathematical statement remains ordinary prose.
 
@@ -45,7 +48,7 @@ was declared in a preceding Lean block.
 #guard_msgs in
 #eval! do
   let html ← renderManualDocHtmlString impls editorialDoc
-  pure <| countSubstr html "class=\"bp-editorial\"" == 5 &&
+  pure <| countSubstr html "class=\"bp-editorial\"" == 6 &&
     hasSubstr html "data-kind=\"translation\"" &&
     hasSubstr html "data-kind=\"meta\"" &&
     hasSubstr html "data-kind=\"formalizationTodo\"" &&
@@ -53,6 +56,8 @@ was declared in a preceding Lean block.
     hasSubstr html "data-kind=\"correction\"" &&
     hasSubstr html "aria-label=\"Clarification\"" &&
     hasSubstr html "aria-label=\"Correction\"" &&
+    hasSubstr html "data-kind=\"outOfScope\"" &&
+    hasSubstr html "aria-label=\"Out of scope\"" &&
     hasSubstr html "Formalisation TODO" &&
     !(hasSubstr html "Formalization gap") &&
     !(hasSubstr html "A proof-status badge concerns") &&
@@ -70,7 +75,9 @@ was declared in a preceding Lean block.
     !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .translation) #[]) &&
     !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .clarification) #[]) &&
     !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .correction) #[]) &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .correction) #[block])
+    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .correction) #[block]) &&
+    !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .outOfScope) #[]) &&
+    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .outOfScope) #[block])
 
 set_option verso.blueprint.foldProofBlocks true
 #docs (Manual) omittedProofDoc "Statement with omitted proof" :=
@@ -79,6 +86,9 @@ set_option verso.blueprint.foldProofBlocks true
 A faithful statement whose proof is deliberately omitted.
 :::clarification
 The mathematical convention is explicit in the statement.
+:::
+:::outOfScope
+An unused generalization is not included in this statement.
 :::
 ::::
 :::proof "editorial.omitted.fixture"

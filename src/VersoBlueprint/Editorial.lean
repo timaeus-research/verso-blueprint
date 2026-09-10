@@ -12,6 +12,7 @@ inductive Kind where
   | formalizationTodo
   | clarification
   | correction
+  | outOfScope
 deriving BEq, FromJson, ToJson, Quote
 
 def Kind.key : Kind → String
@@ -20,6 +21,7 @@ def Kind.key : Kind → String
   | .formalizationTodo => "formalizationTodo"
   | .clarification => "clarification"
   | .correction => "correction"
+  | .outOfScope => "outOfScope"
 
 def Kind.title : Kind → String
   | .translation => "Notation in Lean"
@@ -27,6 +29,7 @@ def Kind.title : Kind → String
   | .formalizationTodo => "Formalisation TODO"
   | .clarification => "Clarification"
   | .correction => "Correction"
+  | .outOfScope => "Out of scope"
 
 def correspondenceWarning : Output.Html :=
   .tag "span" #[("class", "bp-correspondence-warning")]
@@ -102,5 +105,9 @@ Missing proofs alone use the existing proof status, not this directive. -/
 
 /-- A correction explained by linked mathematical evidence, never an editorial approval flag. -/
 @[directive] def correction : DirectiveExpanderOf Unit := Editorial.expand .correction
+
+/-- Deliberately omitted material not needed by the claims retained in scope.
+Explain what is excluded and why; this does not discharge any mathematical obligation. -/
+@[directive] def outOfScope : DirectiveExpanderOf Unit := Editorial.expand .outOfScope
 
 end Informal
