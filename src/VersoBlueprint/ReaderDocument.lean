@@ -116,7 +116,8 @@ private partial def preparePart (input : Input) (part : Part Manual) : StateM Na
 
 /-- Resolve anchor data before Verso traversal, so native renderers and previews share it. -/
 def prepare (text : Part Manual) : IO (Part Manual) := do
-  if !(← System.FilePath.pathExists "anchor/paper-refs.json") then return text
+  if !(← System.FilePath.pathExists "paper-refs.json") &&
+      !(← System.FilePath.pathExists "anchor/paper-refs.json") then return text
   let result ← IO.Process.output { cmd := "python3", args := #["../scripts/anchor_render_data.py", "."] }
   if result.exitCode != 0 then throw <| IO.userError result.stderr
   let input ← IO.ofExcept (Json.parse result.stdout >>= fromJson? (α := Input))
