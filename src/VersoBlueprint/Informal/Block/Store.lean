@@ -160,6 +160,9 @@ private def BlockData.withReservedNumbering
 def mergeBlockOccurrences (existing incoming : BlockData) : BlockData :=
   { existing with
       isProof := existing.isProof && incoming.isProof
+      paperIdentity := existing.paperIdentity <|> incoming.paperIdentity
+      readerContext := existing.readerContext <|> incoming.readerContext
+      hasFormalizationTodo := existing.hasFormalizationTodo || incoming.hasFormalizationTodo
       partPrefix := existing.partPrefix <|> incoming.partPrefix
       globalCount := existing.globalCount <|> incoming.globalCount
   }

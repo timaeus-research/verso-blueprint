@@ -1,5 +1,13 @@
 # Project Notes
 
+## Timaeus fork
+
+This is a vendored package inside the anchors repository, not a standalone
+Git repository. Edit it directly alongside the anchor documents and commit
+everything in the anchors repository. Do not create package worktrees or
+push to a separate fork. The standalone worktree, branch, and PR policies
+below apply only to upstream development. See `../../docs/blueprint-fork.md`.
+
 ## Scope
 
 - Repository root: `/home/egallego/lean/verso-blueprint`

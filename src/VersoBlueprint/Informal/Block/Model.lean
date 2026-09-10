@@ -7,6 +7,7 @@ Author: Emilio J. Gallego Arias
 import Lean
 import VersoBlueprint.Data
 import VersoBlueprint.Source.Data
+import VersoBlueprint.Reader
 
 namespace Informal
 
@@ -242,6 +243,10 @@ def issueNumberSegment? (url : String) : Option String :=
 
 /-- Source and presentation settings belonging to one document occurrence. -/
 structure BlockPresentation where
+  paperIdentity : Option Reader.PaperIdentity := none
+  readerContext : Option Reader.Context := none
+  /-- Derived from native child blocks during traversal, not an author verdict. -/
+  hasFormalizationTodo : Bool := false
   /-- Optional original-source provenance attached with directive-local metadata. -/
   sourceRef : Option Source.Ref := none
   /-- Source location for this rendered occurrence, ordinarily the user-written label token. -/
