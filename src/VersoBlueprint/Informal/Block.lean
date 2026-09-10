@@ -16,6 +16,7 @@ import VersoManual
 import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Environment
+import VersoBlueprint.Editorial
 import VersoBlueprint.Informal.Block.Assets
 import VersoBlueprint.Informal.Block.Common
 import VersoBlueprint.Informal.Block.Config
@@ -72,6 +73,9 @@ private def informalBlockToHtml (renderPreview : PreviewResources.Render := Prev
         let ctxt ← HtmlT.context
         let some data ← ExtensionDecode.report? (RenderingResolution.occurrence s occurrence (some ctxt))
           | pure .empty
+        let data := { data with
+          hasFormalizationTodo := data.hasFormalizationTodo || blocks.any Editorial.hasFormalizationTodo ||
+            (Informal.TraversalIndex.Nodes.occurrence? s data.label).any (·.hasFormalizationTodo) }
         let markup :=
           (Informal.TraversalIndex.ExternalMarkup.data? s data.label).map (·.markup.toArray) |>.getD #[]
         let selectedMarkupAndContent? :=
@@ -143,7 +147,7 @@ private def informalBlockToHtml (renderPreview : PreviewResources.Render := Prev
             (proofCaption? := some (data.displayTitle s))
             (attrs := attrs)
             (headerExtras := headerExtras)
-            (folded := data.foldInformalShell)
+            (folded := data.foldInformalShell && !blocks.any Editorial.hasFormalizationTodo)
           content
           companionPanels := #[externalPanel]
         }
@@ -161,6 +165,8 @@ block_extension Block.informal (data : BlockOccurrence) where
     | none =>
       pure none
     | some occurrence =>
+      let occurrence := { occurrence with
+        hasFormalizationTodo := _contents.any Editorial.hasFormalizationTodo }
       registerTraversedBlock id occurrence _contents
       return none
   toTeX := some <| fun _goI goB _id data blocks => do
@@ -173,7 +179,7 @@ block_extension Block.informal (data : BlockOccurrence) where
       let title := data.displayTitle st
       let body ← blocks.mapM goB
       pure <| Informal.TeX.quotedBlock title body
-  extraCss := Informal.Block.Assets.blockCssAssets
+  extraCss := Reader.css :: Informal.Block.Assets.blockCssAssets
   extraJs := Informal.Block.Assets.blockJsAssets
   toHtml := some (informalBlockToHtml PreviewResources.immediate)
 
@@ -264,7 +270,11 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         deps := resolved.statementUses, proofUses := resolved.proofUses } : Environment.InProgress)
     let some ((retainedContents, sourceRef), count) ← Environment.withDirective prepare blockRef do
         let parsedContents ← parseDirectiveSourceMetadata cfg contents
-        let contents ← parsedContents.body.mapM elabBlock
+        -- Retained bodies are compiled now, before the enclosing document binds its
+        -- reconstruction placeholder. Native Lean roles must serialize their hover
+        -- data directly so these independently evaluated blocks remain closed.
+        let contents ← (show DocElabM _ from fun ctx =>
+          (parsedContents.body.mapM elabBlock) { ctx with docReconstructionPlaceholder := none })
         let (previewBlocks, retainedContents) ← liftM <| retainElaboratedBlocks contents
         pure ((retainedContents, parsedContents.sourceRef?), previewBlocks)
       | return ← ``(Block.concat #[])

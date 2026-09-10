@@ -31,6 +31,7 @@ import VersoBlueprint.HtmlDocument
 import VersoBlueprint.Process
 import VersoBlueprint.Resolve
 import VersoBlueprint.Source.Data
+import VersoBlueprint.ReaderDocument
 import VersoBlueprint.TeX.Cleanup
 import VersoBlueprint.TeX.Pdf
 import VersoBlueprint.TraversalIndex
@@ -916,6 +917,9 @@ metadata. Do not add rendered HTML bodies here; put reusable presentation in
 structure Entry extends Informal.BlockMetadata where
   /-- Composite manifest lookup key for this target family. -/
   key : String
+  paperIdentity : Option Informal.Reader.PaperIdentity := none
+  readerContext : Option Informal.Reader.Context := none
+  hasFormalizationTodo : Bool := false
   /-- Manifest target family. -/
   targetKind : EntryKind
   /-- Authored/display label text, preserving string-authored punctuation without pretty-name quoting. -/
@@ -993,6 +997,9 @@ def Entry.blockData (entry : Entry) : Informal.BlockData := {
   toBlockMetadata := entry.toBlockMetadata
   kind := entry.kind.getD .theorem
   isProof := entry.facet == .proof
+  paperIdentity := entry.paperIdentity
+  readerContext := entry.readerContext
+  hasFormalizationTodo := entry.hasFormalizationTodo
   codeData := entry.codeData
   sourceRef := entry.primarySource?
   sourceLocation := entry.sourceLocation
@@ -2113,6 +2120,9 @@ private def blockSemanticManifestEntry
     foldCodeBlock := preview.foldCodeBlock
     externalMarkup := externalMarkup?.getD (externalMarkupArray state preview.label)
     sources := preview.sourceRef.toArray
+    paperIdentity := blockData.paperIdentity
+    readerContext := blockData.readerContext
+    hasFormalizationTodo := blockData.hasFormalizationTodo
     uses := buildUsesRelations state blockData
     usedBy := buildUsedByRelations state blockData
   }
@@ -2734,6 +2744,7 @@ def blueprintMainWithPreviewData
     (extraSteps : List BlueprintExtraStep := [])
     (model : RenderModel := by exact blueprint_render_model%) : IO UInt32 := do
   let extensionImpls := model.withExtensions extensionImpls
+  let text ← Informal.Reader.prepare text
   let config := withBlueprintAssets config
   let (dumped?, options, externalMarkupConfig) ← handleCliFlags text options extensionImpls config
   if let some code := dumped? then

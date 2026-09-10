@@ -43,6 +43,8 @@ lean_lib VersoBlueprintTests where
   srcDir := "tests"
   roots := #[
     `VersoBlueprintTests.Blueprint.Support,
+    `VersoBlueprintTests.Reader,
+    `VersoBlueprintTests.Editorial,
     `VersoBlueprintTests.BlueprintAssets,
     `VersoBlueprintTests.BlueprintImportedContributions,
     `VersoBlueprintTests.BlueprintImportedContributions.ConflictingProofs,
