@@ -932,7 +932,7 @@ structure Entry where
   key : String
   paperIdentity : Option Informal.Reader.PaperIdentity := none
   readerContext : Option Informal.Reader.Context := none
-  hasFormalizationGap : Bool := false
+  hasFormalizationTodo : Bool := false
   /-- Manifest target family. -/
   targetKind : EntryKind
   /-- Canonical target label: informal label, Lean declaration name, citation label, or external-markup witness label. -/
@@ -1006,7 +1006,7 @@ def Entry.primarySource? (entry : Entry) : Option Informal.Source.Ref :=
 def Entry.blockData (entry : Entry) : Informal.BlockData := {
   paperIdentity := entry.paperIdentity
   readerContext := entry.readerContext
-  hasFormalizationGap := entry.hasFormalizationGap
+  hasFormalizationTodo := entry.hasFormalizationTodo
   kind := entry.blockKind
   codeData := entry.codeData
   sourceRef := entry.primarySource?
@@ -2199,7 +2199,7 @@ private def blockSemanticManifestEntry
     sources := sourceRefsForBlockLabel state preview.label
     paperIdentity := blockData?.bind (·.paperIdentity)
     readerContext := blockData?.bind (·.readerContext)
-    hasFormalizationGap := blockData?.map (·.hasFormalizationGap) |>.getD false
+    hasFormalizationTodo := blockData?.map (·.hasFormalizationTodo) |>.getD false
     uses := blockData?.map (buildUsesRelations state ·) |>.getD #[]
     usedBy := blockData?.map (buildUsedByRelations state ·) |>.getD #[]
     ownerDisplayName := blockData?.bind (·.ownerDisplayName)
