@@ -23,9 +23,41 @@ class PatchTests(unittest.TestCase):
         diff = self.root / "fixture.patch"
         diff.write_text("--- a/" + str(module.TARGET) + "\n+++ b/" + str(module.TARGET) +
                         "\n@@ -1 +1 @@\n-before\n+after\n")
-        for key, value in (("PATCH", diff), ("BEFORE", hashlib.sha256(b"before\n").hexdigest()),
-                           ("AFTER", hashlib.sha256(b"after\n").hexdigest())):
-            self.enterContext(patch.object(module, key, value))
+        self.spec = (module.TARGET, hashlib.sha256(b"before\n").hexdigest(),
+                     hashlib.sha256(b"after\n").hexdigest(), diff)
+        self.enterContext(patch.object(module, "PATCHES", (self.spec,)))
+
+    def add_second(self, contents="before\n"):
+        relative = Path("second.lean")
+        target = self.root / relative
+        target.write_text(contents)
+        diff = self.root / "second.patch"
+        diff.write_text("--- a/second.lean\n+++ b/second.lean\n@@ -1 +1 @@\n-before\n+after\n")
+        self.enterContext(patch.object(module, "PATCHES", (self.spec,
+            (relative, self.spec[1], self.spec[2], diff))))
+        return target, diff
+
+    def test_all_targets_validated_before_any_write(self):
+        target, _ = self.add_second("user edit\n")
+        with self.assertRaisesRegex(ValueError, "Unknown Verso"):
+            module.apply(self.root)
+        self.assertEqual(self.target.read_text(), "before\n")
+        self.assertEqual(target.read_text(), "user edit\n")
+
+    def test_all_patches_checked_before_any_write(self):
+        target, diff = self.add_second()
+        diff.write_text(diff.read_text().replace("-before", "-mismatch"))
+        with self.assertRaises(module.subprocess.CalledProcessError):
+            module.apply(self.root)
+        self.assertEqual(self.target.read_text(), "before\n")
+        self.assertEqual(target.read_text(), "before\n")
+
+    def test_mixed_state_and_idempotence(self):
+        target, _ = self.add_second("after\n")
+        self.assertEqual(module.apply(self.root, check=True), "patchable")
+        self.assertEqual(module.apply(self.root), "patched")
+        self.assertEqual(module.apply(self.root), "already patched")
+        self.assertEqual(target.read_text(), "after\n")
 
     def test_check_apply_and_idempotence(self):
         self.assertEqual(module.apply(self.root, check=True), "patchable")

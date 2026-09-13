@@ -422,6 +422,21 @@ Notes:
 - Blueprint labels are Blueprint-owned metadata
 - Blueprint label conventions do not rewrite external Lean names
 
+### Universe parameters in native term blocks
+
+Native `InlineLean.leanTerm` blocks also support explicitly named universe
+parameters, with the same contextual highlighting as inline Lean terms:
+
+````md
+```InlineLean.leanTerm (universes := "u")
+fun (α : Type u) (x : α) => x
+```
+````
+
+On the pinned Verso dependency, run the supplied `apply-verso-patches.py`
+after fetching dependencies: the term-universe patch makes this option apply
+to the block's expression as well as its optional expected type.
+
 ### Library documentation links with Lean hovers
 
 For an imported library name, wrap a native role in a Markdown link to keep its
