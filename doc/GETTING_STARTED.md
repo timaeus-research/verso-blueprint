@@ -162,6 +162,19 @@ graph views and preview behavior and placement through the rendered page's
 
 ## Read the generator entry point
 
+This fork carries a pinned Verso fix for split-page heading link targets.
+In a workspace with the fork at `vendor/verso-blueprint`, run the following
+after fetching or refreshing dependencies and before building:
+
+```sh
+python3 vendor/verso-blueprint/scripts/apply-verso-patches.py .lake/packages/verso
+```
+
+Fresh workspace packaging may already apply it; rerunning is harmless. The
+script refuses unknown source revisions or local edits without changing them.
+Review the patch deliberately when changing the Verso pin. It patches Lean
+source before native rendering, not generated HTML.
+
 The entry point in
 [project_template/ProjectTemplateMain.lean](../project_template/ProjectTemplateMain.lean)
 is the `main` function you run to generate the site.
