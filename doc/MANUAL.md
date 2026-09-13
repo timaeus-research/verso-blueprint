@@ -640,6 +640,27 @@ Current behavior:
 
 ### Original Source Provenance
 
+To identify a numbered source item, use the existing theorem or definition
+directive's leading metadata block:
+
+````markdown
+:::theorem "main_result"
+%%%
+paperIdentity := some { label := "Theorem 2", href := "source/paper.pdf#page=4" }
+%%%
+The mathematical statement goes here.
+:::
+````
+
+`paperIdentity` uses `Informal.Reader.PaperIdentity`; its optional `pdfHref`
+adds a second PDF link. Labels must be nonempty and links must use safe source
+URLs (HTTP(S), root-relative, or ordinary relative paths). Relative links resolve
+against the generated site's root. Identity survives imports and previews.
+Repository reader enrichment preserves it for unmapped nodes; an explicit
+repository node mapping takes precedence. Unnumbered calculations should have
+source spans only, not an invented numbered identity. Identity and source spans
+can appear together in the same metadata block.
+
 Blueprint can record a three-level source provenance chain for audit tooling:
 original source document, Verso Blueprint node, and associated Lean material.
 This phase stores the source-document catalog and node-local source spans.

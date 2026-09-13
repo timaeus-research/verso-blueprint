@@ -5,6 +5,7 @@ Author: Emilio J. Gallego Arias
 -/
 
 import VersoManual
+import VersoBlueprint.Reader
 
 namespace Informal.Source
 
@@ -194,6 +195,7 @@ reference stored by Blueprint.
 -/
 structure NodeMetadataInput where
   source : Ref := {}
+  paperIdentity : Option Reader.PaperIdentity := none
 deriving Inhabited, Repr, BEq, DecidableEq, FromJson, ToJson, Quote
 
 def NodeMetadataInput.source? (metadata : NodeMetadataInput) : Option Ref :=

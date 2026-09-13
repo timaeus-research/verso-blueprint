@@ -70,8 +70,10 @@ branch must supply labels matching physical PDF page indices; this is not a
 guarantee of the generic `Source.Span` schema. Authored PDF span paths are kept
 separately and remain unchanged. -/
 def enrich (input : Input) (data : BlockData) : BlockData := Id.run do
-  let mut identity : Option PaperIdentity := none
+  let mut identity : Option PaperIdentity := data.paperIdentity
   if let some entry := input.nodes.find? (·.name == labelString data.label) then
+    -- An explicit repository mapping is authoritative; unmapped native identities survive.
+    identity := none
     let source := data.sourceRef
     let pdf := source.bind (·.spans[0]?) |>.bind (·.pdf) |>.map (input.blobBase ++ ·.path) |>.getD ""
     if entry.spanOnly then

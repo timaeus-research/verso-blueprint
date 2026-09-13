@@ -3,9 +3,32 @@ import VersoBlueprint.Informal.Block.Store
 import VersoBlueprint.ReaderDocument
 import VersoBlueprintTests.Blueprint.Support
 import VersoBlueprintTests.Editorial
+import VersoBlueprintTests.ReaderImported
 
 open Informal Lean
+open Verso Genre Manual
 open Verso.VersoBlueprintTests.Blueprint.Support
+
+private def identityImpls : ExtensionImpls := extension_impls%
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let files ← buildManualPreviewDataFiles identityImpls importedIdentityDoc
+  let entry := files.manifest.previews.find? fun entry => entry.label == Name.mkSimple "identity.imported"
+  let nested := files.manifest.previews.find? fun entry => entry.label == Name.mkSimple "identity.nested"
+  let unnumbered := files.manifest.previews.find? fun entry => entry.label == Name.mkSimple "identity.unnumbered"
+  pure <| (entry.bind (·.paperIdentity)).map (·.label) == some "Definition 2" &&
+    (nested.bind (·.paperIdentity)).map (·.label) == some "Lemma 3" &&
+    unnumbered.isSome && (unnumbered.bind (·.paperIdentity)).isNone
+
+/-- info: true -/
+#guard_msgs in
+#eval! do
+  let html ← renderManualDocHtmlString identityImpls importedIdentityDoc
+  pure <| countSubstr html "bp_paper_ref_badge" == 2 &&
+    hasSubstr html "Definition 2 ↗" && hasSubstr html "Lemma 3 ↗" &&
+    hasSubstr html "source/paper.pdf#page=3" && hasSubstr html "page 3"
 
 private def reader : Reader.Context := {
   codename := "fixture", commit := "abc123", baseUrl := "https://example.org/"
@@ -17,6 +40,23 @@ private def node : BlockData := {
   paperIdentity := some { label := "Theorem 3", href := "https://example.org/paper#page=2" }
   hasFormalizationTodo := true
 }
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let entry : PreviewManifest.Entry := {
+    key := "identity", targetKind := .block, label := `identity,
+    facet := .statement, title := "Identity", paperIdentity := node.paperIdentity }
+  let restored ← IO.ofExcept (fromJson? (α := PreviewManifest.Entry) (toJson entry))
+  return restored.blockData.paperIdentity == node.paperIdentity
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from pure (
+  !({ label := " ", href := "paper.pdf" } : Reader.PaperIdentity).isValid &&
+  !({ label := "Lemma 1", href := "javascript:alert(1)" } : Reader.PaperIdentity).isValid &&
+  !({ label := "Lemma 1", href := "paper.pdf", pdfHref := "data:text/html,bad" } : Reader.PaperIdentity).isValid &&
+  (Reader.paper { label := "Lemma 1", href := "javascript:alert(1)" }).asString.isEmpty)
 
 /-- info: true -/
 #guard_msgs in
@@ -68,6 +108,27 @@ private def readerInput : Reader.Input := {
   sources := #[]
   nodes := #[]
 }
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let unmapped := Reader.enrich readerInput node
+  let mapped := Reader.enrich { readerInput with nodes := #[{
+    name := "fixture", label := "Lemma 7", href := "source/paper.pdf#page=8" }] } node
+  return unmapped.paperIdentity == node.paperIdentity &&
+    mapped.paperIdentity.map (·.label) == some "Lemma 7"
+
+/-- error: Label invalid_identity has invalid paperIdentity metadata: a nonempty label and safe source URLs are required -/
+#guard_msgs in
+#docs (Manual) invalidIdentityDoc "Invalid identity" :=
+:::::::
+:::theorem "invalid_identity"
+%%%
+paperIdentity := some { label := "Theorem 1", href := "javascript:alert(1)" }
+%%%
+An unsafe source URL is rejected during elaboration.
+:::
+:::::::
 
 /-- info: true -/
 #guard_msgs in

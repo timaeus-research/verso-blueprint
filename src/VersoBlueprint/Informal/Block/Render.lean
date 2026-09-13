@@ -460,20 +460,8 @@ private def sourceSpanPreviewText (span : Source.Span) : String :=
 
 /-- Resolve a PDF URL without changing its recorded provenance path.
 Only HTTP(S), root-relative, and ordinary relative URLs are linkable. -/
-def sourcePdfHref? (base path : String) : Option String := do
-  let path := path.trimAscii.toString
-  guard (!path.isEmpty)
-  let href := if path.startsWith "https://" || path.startsWith "http://" || path.startsWith "/" then
-    path
-  else if base.isEmpty || base.endsWith "/" then base ++ path
-  else base ++ "/" ++ path
-  guard (!href.contains '\\' && !href.toList.any (fun c => c.toNat < 32 || c.toNat == 127))
-  guard (href.startsWith "https://" || href.startsWith "http://" ||
-    !((href.splitOn "/").head?.getD "").contains ':')
-  -- A scheme in the original path must not be disguised by an HTTPS base.
-  guard (path.startsWith "https://" || path.startsWith "http://" ||
-    !((path.splitOn "/").head?.getD "").contains ':')
-  return href
+def sourcePdfHref? (base path : String) : Option String :=
+  Reader.sourceHref? base path
 
 /-- Verso's page-level `<base>` already makes relative source URLs site-root-relative.
 Explicit reader source bases are preserved. -/

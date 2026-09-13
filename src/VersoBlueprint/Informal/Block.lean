@@ -214,15 +214,22 @@ block_extension Block.informal (data : BlockData) where
 
 private structure ParsedDirectiveContents where
   sourceRef? : Option Source.Ref := none
+  paperIdentity : Option Reader.PaperIdentity := none
   body : Array (TSyntax `block) := #[]
 
 private def parseDirectiveSourceMetadata
     (cfg : Config) (contents : Array (TSyntax `block)) : DocElabM ParsedDirectiveContents := do
   let leading ← Source.Metadata.splitLeadingMetadata contents
+  let mut paperIdentity := none
   let sourceRef? ←
     match leading.term? with
     | some term =>
         let metadata ← Source.Metadata.evalNodeMetadataInput term
+        if let some identity := metadata.paperIdentity then
+          if identity.isValid then
+            paperIdentity := some identity
+          else
+            logErrorAt term m!"Label {cfg.label} has invalid paperIdentity metadata: a nonempty label and safe source URLs are required"
         if let some sourceRef := metadata.source? then
           let validationErrors := Source.Ref.validationErrors sourceRef
           for error in validationErrors do
@@ -234,7 +241,7 @@ private def parseDirectiveSourceMetadata
         pure none
   let body ← Source.Metadata.visibleBlocksWithoutMetadata leading.body fun block =>
     logErrorAt block m!"Label {cfg.label} has a metadata block after visible content; Blueprint source metadata must be the first block inside the directive"
-  pure { sourceRef?, body }
+  pure { sourceRef?, paperIdentity, body }
 
 private unsafe def retainElaboratedBlocksUnsafe (stxs : Array (TSyntax `term)) :
     TermElabM (Array (Doc.Block Genre.Manual) × TSyntax `term) := do
@@ -328,6 +335,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
       kind := blockKind
       codeData
       sourceRef := parsedContents.sourceRef?
+      paperIdentity := parsedContents.paperIdentity
       label
       sourceLocation
       foldProofBlock := verso.blueprint.foldProofBlocks.get opts

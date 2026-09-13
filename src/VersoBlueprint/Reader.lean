@@ -37,7 +37,7 @@ structure PaperIdentity where
   label : String
   href : String
   pdfHref : String := ""
-deriving Inhabited, Repr, FromJson, ToJson, Quote
+deriving Inhabited, Repr, BEq, DecidableEq, FromJson, ToJson, Quote
 
 def encode (text : String) : String := Id.run do
   let mut out := ""
@@ -64,7 +64,29 @@ def issue (ctx : Context) (name target : String) (details : String := "")
        target="_blank" rel="noopener noreferrer" title="Report an issue (opens a pre-filled Linear composer)">
       {{.text true label}}</a>}}
 
+/-- Resolve a source link, permitting HTTP(S), root-relative and ordinary relative URLs. -/
+def sourceHref? (base path : String) : Option String := do
+  let path := path.trimAscii.toString
+  guard (!path.isEmpty)
+  let href := if path.startsWith "https://" || path.startsWith "http://" || path.startsWith "/" then
+    path
+  else if base.isEmpty || base.endsWith "/" then base ++ path
+  else base ++ "/" ++ path
+  guard (!href.contains '\\' && !href.toList.any (fun c => c.toNat < 32 || c.toNat == 127))
+  guard (href.startsWith "https://" || href.startsWith "http://" ||
+    !((href.splitOn "/").head?.getD "").contains ':')
+  -- An HTTPS base must not disguise a scheme in the original path.
+  guard (path.startsWith "https://" || path.startsWith "http://" ||
+    !((path.splitOn "/").head?.getD "").contains ':')
+  return href
+
+/-- Validation shared by native metadata and defensive rendering of imported data. -/
+def PaperIdentity.isValid (identity : PaperIdentity) : Bool :=
+  !identity.label.trimAscii.toString.isEmpty && (sourceHref? "" identity.href).isSome &&
+    (identity.pdfHref.isEmpty || (sourceHref? "" identity.pdfHref).isSome)
+
 def paper (identity : PaperIdentity) : Html :=
+  if !identity.isValid then .empty else
   open Html in
   {{<span class="bp_paper_ref_badge">
       <span class="bp_paper_ref_key">"paper"</span>

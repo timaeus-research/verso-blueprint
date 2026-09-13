@@ -40,6 +40,7 @@ lean_lib VersoBlueprintTests where
   srcDir := "tests"
   roots := #[
     `VersoBlueprintTests.Blueprint.Support,
+    `VersoBlueprintTests.ReaderImported,
     `VersoBlueprintTests.Reader,
     `VersoBlueprintTests.OccurrenceInventoryImported,
     `VersoBlueprintTests.OccurrenceInventory,
