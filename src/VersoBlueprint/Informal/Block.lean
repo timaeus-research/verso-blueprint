@@ -194,6 +194,12 @@ block_extension Block.informal (data : BlockData) where
               markup? := markupEntry?
               code? := some <| HeaderExtra.code codeEntry
             }
+        -- Source paths are site-root-relative without reader enrichment.
+        -- Use the existing native header slot to pass this page's URL base.
+        let sourceRefs := data.sourceRef.toArray
+        let headerExtras := { headerExtras with
+          source? := renderSourceHeaderExtra? sourceRefs
+            (sourceLinkBase data.readerContext ctxt.path.size) }
         return renderInformalBlockModel {
           data
           context := InformalBlockRenderContext.forBlock data

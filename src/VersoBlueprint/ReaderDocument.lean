@@ -63,7 +63,8 @@ private partial def inlineText : Doc.Inline Manual → String
     String.join (xs.toList.map inlineText)
   | .image alt _ => alt
 
-private def enrich (input : Input) (data : BlockData) : BlockData := Id.run do
+/-- Attach reader links without rewriting source spans or inventing paper identities. -/
+def enrich (input : Input) (data : BlockData) : BlockData := Id.run do
   let mut identity : Option PaperIdentity := none
   if let some entry := input.nodes.find? (·.name == labelString data.label) then
     let source := data.sourceRef
@@ -80,7 +81,9 @@ private def enrich (input : Input) (data : BlockData) : BlockData := Id.run do
       let href := if entry.href.isEmpty then pdf else entry.href
       if !href.isEmpty then
         identity := some { label := entry.label, href, pdfHref := pdf }
-  return { data with paperIdentity := identity, readerContext := some input.reader }
+  return { data with
+    paperIdentity := identity
+    readerContext := some { input.reader with sourceBaseUrl := input.blobBase } }
 
 private partial def prepareBlock (input : Input) (insideNode : Bool)
     (block : Doc.Block Manual) : StateM Nat (Doc.Block Manual) := do

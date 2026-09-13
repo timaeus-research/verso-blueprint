@@ -52,3 +52,97 @@ private def node : BlockData := {
     hasSubstr html "Theorem 3" && hasSubstr html "bp_issue_chip" &&
     hasSubstr html "Informal.Block.informal" &&
     !(hasSubstr proofHtml "bp_paper_ref_badge") && hasSubstr proofHtml "bp_issue_chip"
+
+private def sourceFixture : Source.Ref := {
+  document := "paper"
+  spans := #[
+    { page := "5", pdf := some { path := "source/pages/page-5.pdf" } },
+    { page := "6", pdf := some { path := "source/pages/page-6.pdf" } }
+  ]
+}
+
+private def readerInput : Reader.Input := {
+  reader
+  blobBase := "https://example.org/blob/abc123/fixture/"
+  pdfUrl := "https://example.org/paper.pdf"
+  sources := #[]
+  nodes := #[]
+}
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let oldContext := Json.mkObj [
+    ("codename", toJson "fixture"), ("commit", toJson "abc123"),
+    ("sourcePin", toJson ""),
+    ("baseUrl", toJson "https://example.org/")]
+  let parsed ← IO.ofExcept (fromJson? (α := Reader.Context) oldContext)
+  return parsed.sourceBaseUrl.isEmpty
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let enriched := Reader.enrich readerInput { node with
+    paperIdentity := none, sourceRef := some sourceFixture }
+  let stored ← IO.ofExcept (fromJson? (α := StoredBlockData) (toJson enriched.toStoredData))
+  let html := (renderInformalBlockHtml enriched (.forBlock enriched "1.1") #[]).asString
+  return enriched.paperIdentity.isNone && enriched.sourceRef == some sourceFixture &&
+    enriched.readerContext.map (·.sourceBaseUrl) == some readerInput.blobBase &&
+    stored.readerContext.map (·.sourceBaseUrl) == some readerInput.blobBase &&
+    !(hasSubstr html "bp_paper_ref_badge") &&
+    hasSubstr html "href=\"https://example.org/blob/abc123/fixture/source/pages/page-5.pdf\"" &&
+    hasSubstr html "href=\"https://example.org/blob/abc123/fixture/source/pages/page-6.pdf\"" &&
+    hasSubstr html "Page 5 (PDF)" && hasSubstr html "Page 6 (PDF)" &&
+    hasSubstr html "data-bp-source-pdf=\"source/pages/page-5.pdf\""
+
+-- Outside reader enrichment, the author/runtime supplies source assets at the
+-- site root. A nested HTML page must not resolve them in its own directory.
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let bare := { node with
+    paperIdentity := none, readerContext := none,
+    sourceRef := some sourceFixture }
+  let headers : HeaderExtras := {
+    source? := renderSourceHeaderExtra? #[sourceFixture] (sourceLinkBase none 2)
+  }
+  let html := (renderInformalBlockHtml bare
+    (.forBlock bare "1.1" (headerExtras := headers)) #[]).asString
+  return hasSubstr html "href=\"../../source/pages/page-5.pdf\"" &&
+    sourceLinkBase none 0 == "" &&
+    sourceLinkBase (some { reader with sourceBaseUrl := readerInput.blobBase }) 2 ==
+      readerInput.blobBase
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let textOnly : Source.Ref := { document := "notes", spans := #[{ page := "7" }] }
+  let bare := { node with
+    paperIdentity := none, readerContext := none,
+    sourceRef := some textOnly }
+  let html := (renderInformalBlockHtml bare (.forBlock bare "1.1") #[]).asString
+  return hasSubstr html "page 7" && !(hasSubstr html "class=\"bp_source_ref_pdf\"")
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from pure (
+  sourcePdfHref? "../../" "https://example.org/p.pdf" == some "https://example.org/p.pdf" &&
+  sourcePdfHref? "../../" "http://example.org/p.pdf" == some "http://example.org/p.pdf" &&
+  sourcePdfHref? "../../" "/assets/p.pdf" == some "/assets/p.pdf" &&
+  sourcePdfHref? readerInput.blobBase "javascript:alert(1)" == none &&
+  sourcePdfHref? "" "data:text/html,bad" == none &&
+  sourcePdfHref? "" "java\nscript:alert(1)" == none &&
+  sourcePdfHref? "javascript:alert(1)/" "page.pdf" == none)
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let escaped : Source.Ref := { document := "paper", spans := #[
+    { page := "5", pdf := some { path := "https://example.org/p.pdf?name=\"quoted\"&x=1" } }
+  ] }
+  let bare := { node with
+    paperIdentity := none, readerContext := none,
+    sourceRef := some escaped }
+  let html := (renderInformalBlockHtml bare (.forBlock bare "1.1") #[]).asString
+  return hasSubstr html "name=&quot;quoted&quot;&amp;x=1" &&
+    !(hasSubstr html "name=\"quoted\"")

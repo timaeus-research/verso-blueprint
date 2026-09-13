@@ -619,7 +619,15 @@ original source document, Verso Blueprint node, and associated Lean material.
 This phase stores the source-document catalog and node-local source spans.
 Generated Blueprint node shells show a compact source chip when a node has
 source provenance. The chip opens a lightweight source preview with the
-document id and recorded span details. Fuller source review interfaces such as
+document id and recorded span details. PDF spans have clickable **Page N (PDF)**
+links; these source links do not assign the node a theorem number from the paper.
+Reader enrichment resolves local paths against `Reader.Context.sourceBaseUrl`
+(the anchor's commit-pinned source base). Without enrichment, relative PDF paths
+refer to the generated site's root, including from nested pages: the author or
+runtime must publish those source assets there. The preview does not copy them.
+HTTP(S) and root-relative URLs are retained; unsafe URL schemes are not linked.
+Recorded provenance paths remain unchanged in source metadata and manifests.
+Fuller source review interfaces such as
 PDF page viewers, crop overlays, and side-by-side text review remain interface
 work for clients or later Blueprint UI.
 

@@ -13,7 +13,20 @@ structure Context where
   commit : String
   sourcePin : String := ""
   baseUrl : String
-deriving Inhabited, Repr, FromJson, ToJson, Quote
+  /-- Published source-file base (for example a commit-pinned repository URL).
+  Empty means source files are supplied at the generated site's root. -/
+  sourceBaseUrl : String := ""
+deriving Inhabited, Repr, ToJson, Quote
+
+instance : FromJson Context where
+  fromJson? value := do
+    return {
+      codename := ← value.getObjValAs? String "codename"
+      commit := ← value.getObjValAs? String "commit"
+      sourcePin := ← value.getObjValAs? String "sourcePin"
+      baseUrl := ← value.getObjValAs? String "baseUrl"
+      sourceBaseUrl := (← value.getObjValAs? (Option String) "sourceBaseUrl").getD ""
+    }
 
 structure PaperIdentity where
   label : String
