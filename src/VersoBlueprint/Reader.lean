@@ -28,6 +28,11 @@ instance : FromJson Context where
       sourceBaseUrl := (← value.getObjValAs? (Option String) "sourceBaseUrl").getD ""
     }
 
+/-- A source item's explicit identity, distinct from the blueprint's own number
+and from mere page provenance. A label such as "Lemma 2" identifies that lemma;
+it must not be assigned to another calculation merely occurring in its proof.
+For unnumbered source material, retain its source spans without inventing a
+numbered identity. -/
 structure PaperIdentity where
   label : String
   href : String

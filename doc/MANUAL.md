@@ -631,6 +631,25 @@ Fuller source review interfaces such as
 PDF page viewers, crop overlays, and side-by-side text review remain interface
 work for clients or later Blueprint UI.
 
+Exact source-item identities are separate from these spans and from the
+blueprint's automatically assigned definition/theorem numbers. A renderer can
+attach `Informal.Reader.PaperIdentity` through `Informal.BlockData.paperIdentity`:
+
+```lean
+let identity : Informal.Reader.PaperIdentity := {
+  label := "Theorem 2"
+  href := "https://example.org/paper.pdf#page=7"
+}
+let data := { data with paperIdentity := some identity }
+```
+
+This labels a node representing the source's **Theorem 2**. A separate
+calculation in its proof should instead carry its page span, without being
+called another Theorem 2. Do not infer numbered identity merely from a shared
+page, a dependency, or a citation. Unnumbered source material may have source
+provenance and no `paperIdentity`; that does not make it less formalized.
+Audit the identity as well as whether its link works.
+
 Declare source documents with `:::source_document`. The directive body must
 contain exactly one Verso metadata block:
 
