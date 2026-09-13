@@ -1360,7 +1360,10 @@ prefixes with document-order block counts.
 
 - `verso.blueprint.foldProofs`
   - default: `true`
-  - folds proof bodies in rendered Lean code panels after `by`
+  - folds proof bodies in rendered Lean code panels after the declaration's
+    outer `:= by`, not at internal `by` arguments in its statement
+  - leaves term-valued proofs and unfamiliar statement syntax unfolded;
+    top-level `let`/`match` statement expressions are conservatively left intact
 - `verso.blueprint.foldProofBlocks`
   - default: `false`
   - renders proof blocks as collapsed disclosure blocks
