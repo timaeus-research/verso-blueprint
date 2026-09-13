@@ -194,8 +194,8 @@ block_extension Block.informal (data : BlockData) where
               markup? := markupEntry?
               code? := some <| HeaderExtra.code codeEntry
             }
-        -- Source paths are site-root-relative without reader enrichment.
-        -- Use the existing native header slot to pass this page's URL base.
+        -- Verso's <base> handles site-relative source paths; reader enrichment
+        -- may supply an explicit published source base instead.
         let sourceRefs := data.sourceRef.toArray
         let headerExtras := { headerExtras with
           source? := renderSourceHeaderExtra? sourceRefs

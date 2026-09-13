@@ -475,11 +475,10 @@ def sourcePdfHref? (base path : String) : Option String := do
     !((path.splitOn "/").head?.getD "").contains ':')
   return href
 
-/-- Without reader enrichment, authors supply source assets at the site root;
-the relative prefix is determined by the rendered page, not its source file. -/
-def sourceLinkBase (reader : Option Reader.Context) (pageDepth : Nat) : String :=
-  let base := reader.map (·.sourceBaseUrl) |>.getD ""
-  if base.isEmpty then String.join (List.replicate pageDepth "../") else base
+/-- Verso's page-level `<base>` already makes relative source URLs site-root-relative.
+Explicit reader source bases are preserved. -/
+def sourceLinkBase (reader : Option Reader.Context) (_pageDepth : Nat) : String :=
+  reader.map (·.sourceBaseUrl) |>.getD ""
 
 private def renderSourceSpanPreview (base : String) (span : Source.Span) : Verso.Output.Html :=
   open Verso.Output.Html in

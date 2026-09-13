@@ -96,7 +96,7 @@ private def readerInput : Reader.Input := {
     hasSubstr html "data-bp-source-pdf=\"source/pages/page-5.pdf\""
 
 -- Outside reader enrichment, the author/runtime supplies source assets at the
--- site root. A nested HTML page must not resolve them in its own directory.
+-- site root. Verso's <base> already accounts for nested-page depth.
 /-- info: true -/
 #guard_msgs in
 #eval show IO Bool from do
@@ -108,8 +108,11 @@ private def readerInput : Reader.Input := {
   }
   let html := (renderInformalBlockHtml bare
     (.forBlock bare "1.1" (headerExtras := headers)) #[]).asString
-  return hasSubstr html "href=\"../../source/pages/page-5.pdf\"" &&
+  return hasSubstr html "href=\"source/pages/page-5.pdf\"" &&
+    !(hasSubstr html "href=\"../../source/pages/page-5.pdf\"") &&
     sourceLinkBase none 0 == "" &&
+    sourceLinkBase none 2 == "" &&
+    sourceLinkBase (some reader) 2 == "" &&
     sourceLinkBase (some { reader with sourceBaseUrl := readerInput.blobBase }) 2 ==
       readerInput.blobBase
 
