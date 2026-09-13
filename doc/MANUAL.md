@@ -416,6 +416,29 @@ Notes:
 - Blueprint labels are Blueprint-owned metadata
 - Blueprint label conventions do not rewrite external Lean names
 
+### Library documentation links with Lean hovers
+
+For an imported library name, wrap a native role in a Markdown link to keep its
+Lean signature/docstring hover while making it clickable:
+
+```md
+[{InlineLean.name}`List.map`](https://leanprover-community.github.io/mathlib4_docs/Init/Prelude.html#List.map)
+
+[{InlineLean.lean}`List.map Nat.succ`](https://leanprover-community.github.io/mathlib4_docs/Init/Prelude.html#List.map)
+```
+
+These qualified role names work with the standard Blueprint imports and opens.
+`InlineLean.name` displays a declaration name; `InlineLean.lean` elaborates an
+application in the current context. Individual tokens retain their hovers, but
+a link around an application has one click destination. Link names separately
+when they need different destinations. The same composition works in nested
+lists, such as authored glossary entries.
+
+Check that the documentation URL's fragment identifies the intended declaration;
+an HTTP 200 response for its page is not enough. Use this pattern for library
+tokens that are not already in-document links, rather than nesting anchors around
+existing linked references. It does not automatically discover documentation URLs.
+
 ## Attached Rust Code
 
 Blueprint also supports labeled inline Rust code blocks as attached source:
