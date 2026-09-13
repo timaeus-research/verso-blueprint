@@ -179,6 +179,24 @@ def saveData (state : TraverseState) (label : Name) (data : Json) : TraverseStat
 
 end InlineCode
 
+namespace InlineCodeOccurrences
+
+def spec : StoreSpec := {
+  name := `Informal.InlineCodeOccurrences
+  kind := .internalIndex
+  key := "code block occurrence id"
+  value := "collected marker"
+  summary := "Occurrences already collected into label-level Lean summaries and previews."
+}
+
+def contains (state : TraverseState) (id : Verso.Multi.InternalId) : Bool :=
+  (state.getDomainObject? spec.name (toJson id).compress).isSome
+
+def insert (state : TraverseState) (id : Verso.Multi.InternalId) : TraverseState :=
+  saveObjectData state spec.name (toJson id).compress (toJson true)
+
+end InlineCodeOccurrences
+
 namespace RustInlineCode
 
 def spec : StoreSpec := {
@@ -605,6 +623,7 @@ compare against one source location instead of rediscovering each domain name.
 def allSpecs : Array StoreSpec := #[
   Nodes.spec,
   InlineCode.spec,
+  InlineCodeOccurrences.spec,
   RustInlineCode.spec,
   SourceDocuments.spec,
   SourceRefs.spec,

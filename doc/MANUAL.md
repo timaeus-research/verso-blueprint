@@ -279,6 +279,12 @@ theorem nat_add_zero_right (n : Nat) : n + 0 = n := by
 This is the clearest way to connect a Blueprint entry to local formalization
 work in the same project.
 
+Several visible Lean blocks may share one Blueprint label, with prose between
+them. The owning node's declaration list, proof status, dependencies, and Lean
+preview include all those blocks; each code panel keeps its own local summary.
+The node's code link targets the first block, including when it contains only
+setup commands.
+
 ### Compiled code tagged with `@[blueprint "addition_assoc_compiled"]`
 
 Use the `@[blueprint "label"]` attribute when a compiled definition-like declaration or theorem

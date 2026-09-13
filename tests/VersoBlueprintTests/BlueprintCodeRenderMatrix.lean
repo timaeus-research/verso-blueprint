@@ -121,4 +121,111 @@ private def panelIndicatorHtml (label : Name) (source : BlockCodeData) : String 
     !hasSubstr externalRenderFailHtml "bp_render_warning_badge" &&
     hasSubstr externalRenderFailHtml "synthetic render failure"
 
+open Verso Genre Manual
+
+private def repeatedImpls : ExtensionImpls := extension_impls%
+
+#docs (Manual) repeatedCodeDoc "Repeated code ownership" :=
+:::::::
+:::theorem "repeated.forward"
+A helper and its theorem may have separate code panels.
+:::
+
+```lean "repeated.forward"
+open Nat
+```
+
+```lean "repeated.forward"
+def repeatedForwardHelper : Nat := 0
+```
+
+The proof is displayed after the setup.
+
+```lean "repeated.forward"
+theorem repeatedForwardClaim :
+    repeatedForwardHelper = 0 := by
+  sorry
+```
+
+:::theorem "repeated.reverse"
+A theorem can precede a separate definition.
+:::
+
+```lean "repeated.reverse" (autoDeps := true)
+theorem repeatedReverseClaim : True := by
+  have := repeatedForwardClaim
+  sorry
+```
+
+```lean "repeated.reverse" (autoDeps := true)
+def repeatedReverseHelper :
+    Fin (repeatedForwardHelper + 1) := 0
+```
+
+:::theorem "repeated.theorems"
+A later incomplete theorem changes the aggregate status.
+:::
+
+```lean "repeated.theorems"
+theorem repeatedProvedClaim : True := by trivial
+```
+
+```lean "repeated.theorems"
+theorem repeatedLaterClaim : True := by sorry
+```
+:::::::
+
+private def repeatedLogger : Logger IO where
+  log _ _ _ := pure ()
+  errors := pure #[]
+  warnings := pure #[]
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let (html, st) ← renderManualDocHtmlStringAndState repeatedImpls repeatedCodeDoc
+  let (blocks, _) ← traverseManualDocBlocksAndState repeatedImpls repeatedCodeDoc
+  let (_, st') ←
+    (TraverseM.run repeatedImpls {} st <| blocks.mapM Verso.Genre.Manual.traverseBlock)
+      |>.run repeatedLogger
+  let some forward := TraversalIndex.InlineCode.data? st `«repeated.forward»
+    | throw <| IO.userError "Missing forward index"
+  let some reverse := TraversalIndex.InlineCode.data? st `«repeated.reverse»
+    | throw <| IO.userError "Missing reverse index"
+  let key := TraversalIndex.LeanCodePreviews.lookupInlineKey `«repeated.forward»
+  let some obj := TraversalIndex.LeanCodePreviews.object? st key
+    | throw <| IO.userError "Missing inline preview"
+  let .ok preview := fromJson? (α := LeanCodePreview.Entry) obj.data
+    | throw <| IO.userError "Invalid inline preview"
+  let .inlineBlocks previewBlocks _ := preview.source
+    | throw <| IO.userError "Wrong preview kind"
+  let files ← buildManualPreviewDataFiles repeatedImpls repeatedCodeDoc
+  let exported := (toJson files.manifest).compress
+  let ids := (html.splitOn " id=\"").drop 1 |>.map (fun s => (s.splitOn "\"").head!)
+  let some exportedForward := files.manifest.previews.find?
+      (fun entry => entry.label == `«repeated.forward» && entry.kind.isSome)
+    | throw <| IO.userError "Missing exported node"
+  let some (.inline exportedCode) := exportedForward.codeData
+    | throw <| IO.userError "Missing exported inline code"
+  for (name, ok) in #[
+    ("idempotence", st == st'),
+    ("unique rendered ids", ids.eraseDups.length == ids.length),
+    ("single stable code target", (TraversalIndex.InlineCode.object? st
+      `«repeated.forward»).any (fun obj => obj.ids.size == 1)),
+    ("forward declarations", forward.definedDefs.size == 1 && forward.definedTheorems.size == 1),
+    ("reverse declarations", reverse.definedDefs.size == 1 && reverse.definedTheorems.size == 1),
+    ("later statement dependency", reverse.statementUses.any (·.label == `«repeated.forward»)),
+    ("proof dependency", reverse.proofUses.any (·.label == `«repeated.forward»)),
+    ("preview setup and both bodies", previewBlocks.size == 3),
+    ("all node badges", countSubstr html "bp_code_link_status_warning" == 3),
+    ("no false complete badge", !hasSubstr html "bp_code_link_status_proved"),
+    ("local and aggregate popups", countSubstr html "bp_code_decl_status_warning" == 6),
+    ("exported code matches node", toJson exportedCode == toJson forward),
+    ("reverse source order", reverse.definedTheorems[0]!.commandIndex <
+      reverse.definedDefs[0]!.commandIndex),
+    ("exported declarations", #["repeatedForwardClaim", "repeatedForwardHelper",
+      "repeatedReverseClaim", "repeatedReverseHelper"].all (hasSubstr exported))] do
+    unless ok do throw <| IO.userError s!"Repeated-code regression failed: {name}"
+  return true
+
 end Verso.VersoBlueprintTests.BlueprintCodeRenderMatrix

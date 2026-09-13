@@ -62,7 +62,7 @@ block_extension Block.informalCode (data : InlineCodeData) where
         (fun _ => s!"Malformed data: {data}")
       | pure none
     let label := cdata.label
-    if let .some _d := Informal.TraversalIndex.InlineCode.object? (← get) label then
+    if Informal.TraversalIndex.InlineCodeOccurrences.contains (← get) id then
       pure none
     else
       if !cdata.statementUses.isEmpty || !cdata.proofUses.isEmpty then
@@ -73,9 +73,20 @@ block_extension Block.informalCode (data : InlineCodeData) where
               proofUses := Data.UseRef.mergeByLabel existing.proofUses cdata.proofUses
           }
           modify fun s => Informal.TraversalIndex.Nodes.saveData s label (toJson updated)
+      let existingCode := Informal.TraversalIndex.InlineCode.data? (← get) label
+      let merged := match existingCode with
+        | none => cdata
+        | some old =>
+          let offset := old.declarations.foldl (fun n (d : CodeDeclData) => max n d.commandIndex) 0 + 1
+          let shift := fun (d : CodeDeclData) => { d with commandIndex := d.commandIndex + offset }
+          { old with
+            definedDefs := old.definedDefs ++ cdata.definedDefs.map shift
+            definedTheorems := old.definedTheorems ++ cdata.definedTheorems.map shift
+            statementUses := Data.UseRef.mergeByLabel old.statementUses cdata.statementUses
+            proofUses := Data.UseRef.mergeByLabel old.proofUses cdata.proofUses }
       let previewBlocks := previewCodeBlocks id _contents
       let declarations := cdata.declarations
-      if !declarations.isEmpty then
+      do
         let previewKey := Informal.TraversalIndex.LeanCodePreviews.lookupInlineKey label
         let sourceLocation :=
           match declarations[0]? with
@@ -83,18 +94,26 @@ block_extension Block.informalCode (data : InlineCodeData) where
           | none =>
               Informal.Data.SourceLocationResult.unavailable
                 "inline Lean preview source location unavailable"
+        let existingPreview? := Informal.TraversalIndex.LeanCodePreviews.object? (← get) previewKey
+        let (previewBlocks, sourceLocation) :=
+          match existingPreview?.bind (fun obj =>
+              (fromJson? (α := LeanCodePreview.Entry) obj.data).toOption) with
+          | some { source := .inlineBlocks oldBlocks oldLocation, .. } =>
+              (oldBlocks ++ previewBlocks, if oldLocation.ok then oldLocation else sourceLocation)
+          | _ => (previewBlocks, sourceLocation)
         let previewData := toJson
           (LeanCodePreview.Entry.ofInlineBlocks label previewBlocks sourceLocation)
-        let existingPreview? := Informal.TraversalIndex.LeanCodePreviews.object? (← get) previewKey
         modify fun s => Informal.TraversalIndex.LeanCodePreviews.saveData s previewKey previewData
         if existingPreview?.isNone then
           let path ← (·.path) <$> read
           let _ ← Verso.Genre.Manual.externalTag id path s!"--lean-code-preview-{previewKey}"
           modify fun s => Informal.TraversalIndex.LeanCodePreviews.saveId s previewKey id
-      let path ← (·.path) <$> read
-      let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-code-{label}"
-      modify λ s => Informal.TraversalIndex.InlineCode.saveId s label id
-      modify λ s => Informal.TraversalIndex.InlineCode.saveData s label (toJson cdata)
+      if existingCode.isNone then
+        let path ← (·.path) <$> read
+        let _ ← Verso.Genre.Manual.externalTag id path s!"--informal-code-{label}"
+        modify λ s => Informal.TraversalIndex.InlineCode.saveId s label id
+      modify λ s => Informal.TraversalIndex.InlineCode.saveData s label (toJson merged)
+      modify λ s => Informal.TraversalIndex.InlineCodeOccurrences.insert s id
       pure none
   toTeX := some <| fun _goI goB _id data blocks => do
       let title ←
