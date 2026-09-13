@@ -41,6 +41,8 @@ lean_lib VersoBlueprintTests where
   roots := #[
     `VersoBlueprintTests.Blueprint.Support,
     `VersoBlueprintTests.Reader,
+    `VersoBlueprintTests.OccurrenceInventoryImported,
+    `VersoBlueprintTests.OccurrenceInventory,
     `VersoBlueprintTests.Editorial,
     `VersoBlueprintTests.BlueprintAssets,
     `VersoBlueprintTests.BlueprintAutoDeps,

@@ -4,6 +4,9 @@ This document is the current reference for Blueprint authoring and rendering.
 For documented Lean, generated-data, and browser integration APIs, see
 [`API.md`](./API.md).
 
+For optional batch-only evidence of actual scoped Lean applications and
+instance arguments, see [Contextual occurrence evidence](./OCCURRENCE_INVENTORY.md).
+
 If you are starting a first project, read
 [project_template/README.md](../project_template/README.md) and
 [GETTING_STARTED.md](./GETTING_STARTED.md) before this manual.
