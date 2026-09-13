@@ -101,7 +101,7 @@ private def term (ctx : ContextInfo) (ti : TermInfo) : IO Occurrence :=
       if let .forallE name _ body bi := fnType then
         if bi.isInstImplicit then
           let ty ← instantiateMVars (← inferType arg)
-          let cls := ty.getAppFn.constName?
+          let cls := (← whnf ty).getAppFn.constName?
           slots := slots.push {
             index, binder := name.toString
             className := cls.filter (isClass (← getEnv)) |>.map Name.toString

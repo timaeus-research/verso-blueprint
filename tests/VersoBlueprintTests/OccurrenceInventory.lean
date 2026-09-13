@@ -36,6 +36,9 @@ def inventoryConcrete (x y : Nat) := x * y
 def inventoryLocal {α : Type} [Mul α] (x y : α) := x * y
 def inventoryDirectLocal {α : Type} [Mul α] (x y : α) :=
   Mul.mul x y
+abbrev InventoryAlias (α : Type) := Mul α
+def inventoryAliasedLocal {α : Type} [InventoryAlias α]
+    (x y : α) := Mul.mul x y
 end
 ```
 :::::::
@@ -59,6 +62,21 @@ run_cmd do
   unless rows.any (fun r => r.parentDecl == some "inventoryDirectLocal" &&
       r.instances.any (fun s => s.isLocal && s.className == some "Mul")) do
     throwError "missing direct local instance argument"
+  unless rows.any (fun r => r.parentDecl == some "inventoryAliasedLocal" &&
+      r.instances.any (fun s => s.isLocal && s.className == some "Mul" &&
+        s.type.startsWith "InventoryAlias")) do
+    throwError "class alias lost its class identity or original display"
+  let source := (← getFileMap).source
+  let mut checkedRanges := 0
+  for r in rows do
+    if !r.synthetic && r.source.trimAscii.toString == "x ◇ y" then
+      let some a := r.startByte | throwError "missing original start position"
+      let some b := r.endByte | throwError "missing original end position"
+      unless (String.fromUTF8! (source.toUTF8.extract a b)).trimAscii.toString ==
+          "x ◇ y" do
+        throwError "occurrence range does not recover the source application"
+      checkedRanges := checkedRanges + 1
+  unless checkedRanges >= 2 do throwError "original application ranges not checked"
   unless rows.any (fun r => r.parentDecl == some "inventoryConcrete" &&
       r.instances.any (!·.isLocal)) do
     throwError "missing concrete instance argument"
