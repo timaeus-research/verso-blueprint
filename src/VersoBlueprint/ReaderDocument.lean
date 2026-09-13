@@ -63,7 +63,12 @@ private partial def inlineText : Doc.Inline Manual → String
     String.join (xs.toList.map inlineText)
   | .image alt _ => alt
 
-/-- Attach reader links without rewriting source spans or inventing paper identities. -/
+/-- Attach reader links without rewriting source spans or inventing paper identities.
+The reader-specific `spanOnly` branch builds a `#page=` destination from the first
+source page label when a whole-document URL is available. Callers using that
+branch must supply labels matching physical PDF page indices; this is not a
+guarantee of the generic `Source.Span` schema. Authored PDF span paths are kept
+separately and remain unchanged. -/
 def enrich (input : Input) (data : BlockData) : BlockData := Id.run do
   let mut identity : Option PaperIdentity := none
   if let some entry := input.nodes.find? (·.name == labelString data.label) then

@@ -140,6 +140,21 @@ private def readerInput : Reader.Input := {
 /-- info: true -/
 #guard_msgs in
 #eval show IO Bool from do
+  let source : Source.Ref := { document := "paper", spans := #[
+    { page := "12", pdf := some { path := "/source/paper.pdf#page=16" } },
+    { page := "A", pdf := some { path := "/source/paper.pdf#nameddest=appendix" } },
+    { page := "12", pdf := some { path := "/source/pages/page-12.pdf" } }
+  ] }
+  let sourced := { node with sourceRef := some source }
+  let html := (renderInformalBlockHtml sourced (.forBlock sourced "1.1") #[]).asString
+  return hasSubstr html "paper.pdf#page=16" &&
+    hasSubstr html "paper.pdf#nameddest=appendix" &&
+    hasSubstr html "pages/page-12.pdf\"" &&
+    !(hasSubstr html "#page=12")
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
   let escaped : Source.Ref := { document := "paper", spans := #[
     { page := "5", pdf := some { path := "https://example.org/p.pdf?name=\"quoted\"&x=1" } }
   ] }

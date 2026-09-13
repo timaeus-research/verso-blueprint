@@ -630,6 +630,16 @@ refer to the generated site's root, including from nested pages: the author or
 runtime must publish those source assets there. The preview does not copy them.
 HTTP(S) and root-relative URLs are retained; unsafe URL schemes are not linked.
 Recorded provenance paths remain unchanged in source metadata and manifests.
+
+`span.page` is a source-page label, not an inferred page index in `pdf.path`.
+The **Page N (PDF)** link uses the authored PDF destination after URL-base
+resolution. For a whole PDF, include the physical one-based destination
+explicitly: use `page := "12"` with
+`pdf := some { path := "/source/paper.pdf#page=16" }` if printed page 12 is
+physical PDF page 16. A one-page extract can instead use
+`path := "/source/pages/page-12.pdf"` without a fragment. Existing named
+destinations and other PDF URL options are preserved.
+
 Fuller source review interfaces such as
 PDF page viewers, crop overlays, and side-by-side text review remain interface
 work for clients or later Blueprint UI.
