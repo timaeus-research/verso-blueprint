@@ -283,20 +283,32 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let resolved ← cfg.resolveForDirective kind isProof
     let parsedContents ← parseDirectiveSourceMetadata cfg contents
     let label := resolved.label
+    let incomingStack ← Environment.stack
     let accepted ← Environment.push
       label resolved.envKind resolved.codeHint resolved.parent resolved.priority
       resolved.owner resolved.tags resolved.effort resolved.prUrl resolved.statementUses
     -- Retained bodies are compiled now, before the enclosing document binds its
     -- reconstruction placeholder. Native Lean roles must serialize their hover
     -- data directly so these independently evaluated blocks remain closed.
-    let contents ← (show DocElabM _ from fun ctx =>
-      (parsedContents.body.mapM elabBlock) { ctx with docReconstructionPlaceholder := none })
-    if !accepted then
-      return ← ``(Block.concat #[$contents,*])
-    let (previewBlocks, retainedContents) ←
-      liftM <| retainElaboratedBlocks contents
-    Environment.setPreviewBlocks previewBlocks
-    let count ← Environment.pop blockRef
+    let (contents, registration?) ← try
+      let contents ← (show DocElabM _ from fun ctx =>
+        (parsedContents.body.mapM elabBlock) { ctx with docReconstructionPlaceholder := none })
+      if !accepted then
+        pure (contents, none)
+      else
+        let (previewBlocks, retainedContents) ←
+          liftM <| retainElaboratedBlocks contents
+        Environment.setPreviewBlocks previewBlocks
+        let count ← Environment.pop blockRef
+        pure (contents, some (retainedContents, count))
+    catch ex =>
+      -- A failed body must not leave its frame active for subsequent nodes.
+      -- Do not pop here: pop commits an incomplete node. Preserve outer frames
+      -- and unrelated environment changes, including compiled declarations.
+      Environment.modify fun state => { state with stack := incomingStack }
+      throw ex
+    let some (retainedContents, count) := registration?
+      | return ← ``(Block.concat #[$contents,*])
     liftM <| DependencyAnalysis.attachInferredUseRefs label blockRef { proof := resolved.proofUses }
     let node? ← Environment.getNode? label
     let blockKind : Data.InProgressKind ←

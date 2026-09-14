@@ -137,7 +137,9 @@ error: uses reference to «lem:hover.reject.inline.intent.target» has invalid '
 #guard_msgs in
 #docs (Genre.Manual) hoverUsesRejectsIntentAliasDoc "Uses Rejects Intent Alias" :=
 :::::::
+:::lemma_ "lem:hover.reject.inline.intent.ref"
 Mention {uses "lem:hover.reject.inline.intent.target" (intent := "aux")}[].
+:::
 :::::::
 
 /-- info: true -/
