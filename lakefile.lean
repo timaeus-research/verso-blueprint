@@ -3,7 +3,10 @@ open Lake DSL
 
 require verso from git "https://github.com/leanprover/verso"@"v4.33.0"
 require «verso-slides» from git "https://github.com/leanprover/verso-slides"@"v4.33.0"
-require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.104"
+-- ProofWidgets pinned to the revision Mathlib v4.33.1 uses (v0.0.108), so a Mathlib-based
+-- blueprint project resolves a single ProofWidgets. verso/verso-slides stay at v4.33.0: upstream
+-- publishes no v4.33.1 tag and the Lean v4.33.1 patch release is source-compatible.
+require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.108"
 
 package VersoBlueprint where
   precompileModules := false
