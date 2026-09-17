@@ -407,6 +407,18 @@ For all natural numbers $`a`, $`b`, and $`c`, addition is associative.
 This links the Blueprint entry to an existing Lean declaration without copying
 the declaration body into the chapter.
 
+The rendered declaration shows its signature and docstring; a structure or class
+also lists its fields, parents and constructor, an inductive type its
+constructors. A plain definition (`def` or `abbrev`, not a theorem or an
+instance) additionally shows its body after the signature, as `:= …`,
+pretty-printed under the signature's binders with the same hovers. Set
+`verso.blueprint.externalCode.definitionBodies` to `false` to render signatures
+only:
+
+```lean
+set_option verso.blueprint.externalCode.definitionBodies false
+```
+
 If the same Blueprint label also has a labeled inline Lean block, Blueprint
 keeps both Lean associations. External declaration references render with the
 informal statement block, while inline Lean blocks render at their source

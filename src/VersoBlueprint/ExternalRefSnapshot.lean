@@ -286,7 +286,8 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
     let renderResult ←
       (renderDeclHtmlDirectFromInfoE canonical cinfo
         (headerBadge? := some (externalDeclStatusBadge ref.provedStatus))
-        (headerSource? := headerSource?)).run'
+        (headerSource? := headerSource?)
+        (showBody := verso.blueprint.externalCode.definitionBodies.get opts)).run'
     let render : Data.ExternalDeclRender :=
       match renderResult with
       | .ok html => .ok html
