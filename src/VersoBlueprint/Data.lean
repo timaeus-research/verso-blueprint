@@ -501,6 +501,10 @@ def ExternalRef.displayOpenNamespaces (ref : ExternalRef) : List Name :=
     let root := n.getRoot
     root != `Verso && root != `Informal && root != `Lean
 
+/-- The declaration's name as the page shows it: relative to the namespaces that were open. -/
+def ExternalRef.displayName (ref : ExternalRef) : Name :=
+  Informal.shortenName ref.displayOpenNamespaces ref.canonical
+
 def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
   { written := name, canonical := name.eraseMacroScopes, origin, kind := .definition }
 

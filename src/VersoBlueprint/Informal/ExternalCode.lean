@@ -183,11 +183,11 @@ private def externalDeclStatusView (item : LinkedExternalDecl) : ExternalDeclSta
 
 private def externalDeclNode (item : LinkedExternalDecl) : Output.Html :=
   open Verso.Output.Html in
-  let declTxt := {{<code>{{.text true s!"{item.decl.written}"}}</code>}}
+  let declTxt := {{<code>{{.text true s!"{item.decl.displayName}"}}</code>}}
   if let some href := item.href then
     Informal.LeanCodeLink.renderResolved
       item.decl.canonical declTxt "" (some href)
-      (previewTitle := s!"{item.decl.canonical}")
+      (previewTitle := s!"{item.decl.displayName}")
   else
     declTxt
 

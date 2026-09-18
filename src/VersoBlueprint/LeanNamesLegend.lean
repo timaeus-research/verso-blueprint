@@ -46,7 +46,7 @@ block_extension Block.leanNamesLegend (names : Array Name) where
     return .tag "p" #[("class", "bp_lean_names_legend")] <| .seq #[
       .text true "Lean names in this section are shown relative to ",
       namesHtml names,
-      .text true "; declaration headers show the full name."]
+      .text true "."]
   toTeX := some fun _ _ _ _ _ => pure .empty
 
 /-- The display namespaces of every external declaration reachable from a block, in order. -/

@@ -25,6 +25,21 @@ register_option verso.blueprint.externalCode.showUniverses : Bool := {
 
 namespace Informal
 
+/--
+`n` relative to the open namespaces: the longest open namespace that is a proper prefix of `n` is
+dropped, so that the name reads as it would in a file with those `open`s (`GreyBook.LearningSetup.Kn`
+under `open GreyBook` is `LearningSetup.Kn`).
+-/
+def shortenName (opens : List Name) (n : Name) : Name :=
+  let candidates := opens.filter fun ns => ns.isPrefixOf n && ns != n
+  match candidates.foldl (fun best ns =>
+      match best with
+      | none => some ns
+      | some b => if ns.getNumParts > b.getNumParts then some ns else some b) none with
+  | some ns => n.replacePrefix ns .anonymous
+  | none => n
+
+
 abbrev ExternalDeclHtml := Verso.Output.Html
 
 inductive ExternalDeclRenderError where
@@ -576,8 +591,9 @@ private def stripRootPrefixSyntax (stx : Syntax) : Syntax :=
 
 /--
 The declaration header without its universe parameter list: Verso's `Signature.forName` prints
-`name.{u_1, u_2} (binders) : type`; this is the same delaboration with `universes := false`, the
-name's own hover removed (no link from a declaration to itself), laid out at both widths.
+`Full.Name.{u_1, u_2} (binders) : type`; this is the same delaboration with `universes := false`,
+the name written relative to the open namespaces (as the binders and body are), without its own
+hover (no link from a declaration to itself), laid out at both widths.
 -/
 private def signatureWithoutUniverses (decl : Name) : MetaM Verso.Genre.Manual.Signature := do
   let cinfo ← getConstInfo decl
@@ -586,7 +602,10 @@ private def signatureWithoutUniverses (decl : Name) : MetaM Verso.Genre.Manual.S
     PrettyPrinter.delabCore e
       (delab := PrettyPrinter.Delaborator.delabConstWithSignature (universes := false))
   let stx := stripRootPrefixSyntax stx.raw
-  let stx := stx.setArg 0 (stripInfoSyntax (stx.getArg 0))
+  let opens : List Name := (← getOpenDecls).filterMap fun
+    | .simple ns _ => some ns
+    | .explicit .. => none
+  let stx := stx.setArg 0 (mkIdent (shortenName opens decl))
   let fmt ← PrettyPrinter.ppTerm ⟨stx⟩
   let fwi : FormatWithInfos := ⟨fmt, infos⟩
   return { wide := ← highlightFormat fwi 72, narrow := ← highlightFormat fwi 42 }

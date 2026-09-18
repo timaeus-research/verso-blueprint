@@ -426,8 +426,10 @@ An external declaration is rendered in the Lean context of the chapter file
 that references it, at the point of the directive. Names inside the rendered
 signature and body are therefore shortened relative to the namespaces that
 file has `open`ed (an `open MeasureTheory` turns
-`MeasureTheory.Measure Ω` into `Measure Ω`); the declaration's own name in the
-header is always printed in full. Chapter files should use `open`, never
+`MeasureTheory.Measure Ω` into `Measure Ω`), and so is the declaration's own
+name in the header and in the panel list (`GreyBook.LearningSetup.Kn` under
+`open GreyBook` shows as `LearningSetup.Kn`; links and hover keys keep the
+canonical name). Chapter files should use `open`, never
 `namespace`, for this: a `namespace` block would make the chapter's own
 declarations (labels, block data) part of that namespace.
 
@@ -436,7 +438,7 @@ read from Lean's own state), and the preparation pass
 `Informal.LeanNamesLegend.prepare` turns that record into a legend for the
 reader: an HTML page whose linked declarations were all rendered with the same
 open namespaces gets one legend block at the top ("Lean names in this section
-are shown relative to `A`, `B`; declaration headers show the full name"); a
+are shown relative to `A`, `B`"); a
 page whose declarations disagree gets the namespaces on every rendered row
 instead. The pass takes the renderer's `htmlDepth` (Verso's default is 2) so
 that it knows which parts share a page; pass the same value to both. Apply the

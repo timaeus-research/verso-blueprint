@@ -122,8 +122,9 @@ private def collectSorries (label : Name) (kind : String) (decls : Array α)
     else
       acc
 
-private def mkIndexItem (label : Name) (kind : Data.NodeKind) (leanObjects : List Name := []) : IndexItem :=
-  { label, kind := toString kind, leanObjects }
+private def mkIndexItem (label : Name) (kind : Data.NodeKind) (leanObjects : List Name := [])
+    (leanDisplayNames : List Name := []) : IndexItem :=
+  { label, kind := toString kind, leanObjects, leanDisplayNames }
 
 private def nodeLeanObjects (node : Data.Node) : List Name :=
   let externalNames :=
@@ -133,6 +134,18 @@ private def nodeLeanObjects (node : Data.Node) : List Name :=
     node.literateCodes.foldl (init := externalNames) fun acc code =>
       code.definedDeclNames.foldl pushUniqueName acc
   allNames.toList
+
+/-- `nodeLeanObjects`, name for name, as the pages display them. -/
+private def nodeLeanDisplayNames (node : Data.Node) : List Name :=
+  let external :=
+    node.externalRefs.foldl (init := ((#[] : Array Name), (#[] : Array Name))) fun (seen, out) decl =>
+      if seen.contains decl.canonical then (seen, out)
+      else (seen.push decl.canonical, out.push decl.displayName)
+  let allNames :=
+    node.literateCodes.foldl (init := external) fun acc code =>
+      code.definedDeclNames.foldl (fun (seen, out) n =>
+        if seen.contains n then (seen, out) else (seen.push n, out.push n)) acc
+  allNames.2.toList
 
 private def codeDeclCount (code : Data.Code) : Nat :=
   code.definedDefs.size + code.definedTheorems.size
@@ -155,6 +168,7 @@ private structure NodeLeanSummary where
   leanDecls : Nat := 0
   sorries : Nat := 0
   leanObjects : List Name := []
+  leanDisplayNames : List Name := []
   sorryDetails : List SorryItem := []
   missingLeanDecls : List MissingLeanDeclItem := []
   renderFailures : List RenderFailureItem := []
@@ -219,6 +233,7 @@ private def nodeLeanSummary (label : Name) (node : Data.Node) : NodeLeanSummary 
       leanDecls := externalDecls.size + inlineDecls
       sorries := incompleteExternalDecls.size + inlineSorries
       leanObjects := nodeLeanObjects node
+      leanDisplayNames := nodeLeanDisplayNames node
       sorryDetails := externalSorryDetails ++ inlineSorryDetails
       missingLeanDecls
       renderFailures
@@ -256,6 +271,7 @@ private def metadataEntryItem (state : Environment.State) (label : Name) (node :
     prUrl := node.prUrl
     tags := node.tags.toList
     leanObjects := nodeLeanObjects node
+    leanDisplayNames := nodeLeanDisplayNames node
   }
 
 private def mkActionableItem? (state : Environment.State) (external : Informal.Graph.ExternalCodeStatus)
@@ -286,6 +302,7 @@ private def mkActionableItem? (state : Environment.State) (external : Informal.G
         directUses := usage.directUses
         downstreamUses
         leanObjects := nodeLeanObjects node
+        leanDisplayNames := nodeLeanDisplayNames node
       }
 
 private def metadataIsQuickWin (priority effort : Option String) : Bool :=
@@ -428,22 +445,22 @@ private def collectSummaryOverview (ctx : SummaryBuildContext) : Summary :=
     let leanSummary := nodeLeanSummary label node
     let pendingInformalEntries : List PendingInformalItem :=
       if hasCode && ((node.kind.isTheoremLike && !hasProof) || !hasStatement) then
-        mkIndexItem label node.kind leanSummary.leanObjects :: acc.pendingInformalEntries
+        mkIndexItem label node.kind leanSummary.leanObjects leanSummary.leanDisplayNames :: acc.pendingInformalEntries
       else
         acc.pendingInformalEntries
     let definitionIndex : List IndexItem :=
       if node.kind == Data.NodeKind.definition then
-        mkIndexItem label node.kind leanSummary.leanObjects :: acc.definitionIndex
+        mkIndexItem label node.kind leanSummary.leanObjects leanSummary.leanDisplayNames :: acc.definitionIndex
       else
         acc.definitionIndex
     let theoremLikeIndex : List IndexItem :=
       if node.kind.isTheoremLike then
-        mkIndexItem label node.kind leanSummary.leanObjects :: acc.theoremLikeIndex
+        mkIndexItem label node.kind leanSummary.leanObjects leanSummary.leanDisplayNames :: acc.theoremLikeIndex
       else
         acc.theoremLikeIndex
     let axiomIndex : List IndexItem :=
       if statusFlags.hasAxiomLike then
-        mkIndexItem label node.kind leanSummary.leanObjects :: acc.axiomIndex
+        mkIndexItem label node.kind leanSummary.leanObjects leanSummary.leanDisplayNames :: acc.axiomIndex
       else
         acc.axiomIndex
     let acc := { acc with
@@ -468,9 +485,10 @@ private def collectTheoremLikeByParent (ctx : SummaryBuildContext) : List Parent
   let grouped := ctx.entries.foldl (init := ({} : NameMap (List IndexItem))) fun acc (label, node) =>
     if node.kind.isTheoremLike then
       let leanObjects := nodeLeanObjects node
+      let leanDisplayNames := nodeLeanDisplayNames node
       match node.parent with
       | some parent =>
-        let item : IndexItem := mkIndexItem label node.kind leanObjects
+        let item : IndexItem := mkIndexItem label node.kind leanObjects leanDisplayNames
         addParentTheoremLikeItem acc parent item
       | none => acc
     else
@@ -502,6 +520,7 @@ private def usageItem? (ctx : SummaryBuildContext) (label : Name) (node : Data.N
       directUses := usage.directUses
       downstreamUses := ctx.downstreamUses label
       leanObjects := nodeLeanObjects node
+      leanDisplayNames := nodeLeanDisplayNames node
     }
 
 private def collectUsageItems (ctx : SummaryBuildContext) : List UsageItem :=
@@ -607,6 +626,7 @@ private def collectDependencyLoadItems (ctx : SummaryBuildContext) : List Depend
         directUses := usage.directUses
         downstreamUses := ctx.downstreamUses label
         leanObjects := nodeLeanObjects node
+        leanDisplayNames := nodeLeanDisplayNames node
       }
   (sortDependencyLoadItems items).toList
 
@@ -614,7 +634,7 @@ private def collectIndexItems (ctx : SummaryBuildContext) (keep : Name → Data.
     List IndexItem :=
   ctx.entries.foldl (init := []) fun acc (label, node) =>
     if keep label node then
-      mkIndexItem label node.kind (nodeLeanObjects node) :: acc
+      mkIndexItem label node.kind (nodeLeanObjects node) (nodeLeanDisplayNames node) :: acc
     else
       acc
   |>.reverse
