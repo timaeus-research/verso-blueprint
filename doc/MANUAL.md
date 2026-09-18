@@ -434,19 +434,28 @@ declarations (labels, block data) part of that namespace.
 The snapshot records which namespaces were open (`ExternalRef.openNamespaces`,
 read from Lean's own state), and the preparation pass
 `Informal.LeanNamesLegend.prepare` turns that record into a legend for the
-reader: a part whose linked declarations were all rendered with the same open
-namespaces gets one legend block at the top ("Lean names in this section are
-shown relative to `A`, `B`; declaration headers show the full name"); a part
-whose declarations disagree gets the namespaces on every rendered row instead.
-Apply the pass to the document in the generator:
+reader: an HTML page whose linked declarations were all rendered with the same
+open namespaces gets one legend block at the top ("Lean names in this section
+are shown relative to `A`, `B`; declaration headers show the full name"); a
+page whose declarations disagree gets the namespaces on every rendered row
+instead. The pass takes the renderer's `htmlDepth` (Verso's default is 2) so
+that it knows which parts share a page; pass the same value to both. Apply the
+pass to the document in the generator:
 
 ```lean
 def main (args : List String) : IO UInt32 :=
   Informal.PreviewManifest.blueprintMainWithPreviewData
-    (Informal.LeanNamesLegend.prepare (%doc Blueprint))
+    (Informal.LeanNamesLegend.prepare (htmlDepth := 1) (%doc Blueprint))
     args
     (extensionImpls := by exact extension_impls%)
+    (config := { htmlDepth := 1, sectionTocDepth := none })
 ```
+
+`htmlDepth` is Verso's page split: `1` renders one page per top-level part
+(chapter) with its sections inline, `2` also gives every section its own page,
+`0` puts the whole document on one page. A part can opt out of splitting with
+`htmlSplit := .never` in its metadata, and `sectionTocDepth := none` gives each
+page an unlimited local table of contents.
 
 Keeping the `open` prelude identical across the chapter files gives every page
 the same legend and keeps the rendering uniform; a check that the preludes agree
