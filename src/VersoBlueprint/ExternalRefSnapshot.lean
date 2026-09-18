@@ -246,6 +246,10 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
     (ref : Data.ExternalRef) : Lean.CoreM Data.ExternalRef := do
   let env ← getEnv
   let canonical := ref.canonical.eraseMacroScopes
+  let openNamespaces : List Name :=
+    ((← getOpenDecls).filterMap fun
+      | .simple ns _ => some ns
+      | .explicit .. => none).eraseDups
   match env.find? canonical with
   | none =>
     pure {
@@ -253,6 +257,7 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
       canonical
       present := false
       provedStatus := .missing
+      openNamespaces
       render := .error (.moduleUnavailable canonical)
     }
   | some cinfo =>
@@ -287,7 +292,8 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
       (renderDeclHtmlDirectFromInfoE canonical cinfo
         (headerBadge? := some (externalDeclStatusBadge ref.provedStatus))
         (headerSource? := headerSource?)
-        (showBody := verso.blueprint.externalCode.definitionBodies.get opts)).run'
+        (showBody := verso.blueprint.externalCode.definitionBodies.get opts)
+        (showUniverses := verso.blueprint.externalCode.showUniverses.get opts)).run'
     let render : Data.ExternalDeclRender :=
       match renderResult with
       | .ok html => .ok html
@@ -298,6 +304,7 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
       range? := ranges?.map (fun r => r.range)
       selectionRange?
       sourceHref?
+      openNamespaces
       render
     }
 

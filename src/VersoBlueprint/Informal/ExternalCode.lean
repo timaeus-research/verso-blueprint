@@ -224,12 +224,21 @@ private def externalDeclRenderedMeta
     else
       .empty
   let sourceRef? := externalDeclSourceRef? item
+  let opens := item.decl.displayOpenNamespaces
+  let legend : Output.Html :=
+    if item.decl.legendInKicker && !opens.isEmpty then
+      {{<span class="bp_external_decl_open_namespaces">
+          "names relative to " {{.text true (String.intercalate ", " (opens.map (·.toString)))}}
+        </span>}}
+    else
+      .empty
   {{
     <div class="bp_external_decl_meta bp_external_decl_rendered_meta">
       {{statusBadge}}
       {{if let some sourceRef := sourceRef? then
         {{<span class="bp_external_decl_rendered_source">{{sourceRef}}</span>}}
        else .empty}}
+      {{legend}}
     </div>
   }}
 

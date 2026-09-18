@@ -478,10 +478,28 @@ structure ExternalRef where
   kind : NodeKind := .definition
   sourceHref? : Option String := none
   /--
+  The namespaces that were open where this reference was rendered: names inside the rendered
+  signature and body are shortened relative to them. Recorded from Lean's own state, so a legend
+  derived from it cannot drift from the rendering.
+  -/
+  openNamespaces : List Name := []
+  /--
+  Whether the rendered row should say which namespaces were open. Set by
+  `Informal.LeanNamesLegend.prepare` for pages whose nodes disagree; otherwise the page carries one
+  legend.
+  -/
+  legendInKicker : Bool := false
+  /--
   Snapshot of the direct external rendering outcome.
   -/
   render : ExternalDeclRender := .error (.moduleUnavailable canonical)
 deriving Repr, Inhabited, ToJson, FromJson, Quote
+
+/-- The open namespaces worth showing a reader: Verso's own document machinery is dropped. -/
+def ExternalRef.displayOpenNamespaces (ref : ExternalRef) : List Name :=
+  ref.openNamespaces.filter fun n =>
+    let root := n.getRoot
+    root != `Verso && root != `Informal && root != `Lean
 
 def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
   { written := name, canonical := name.eraseMacroScopes, origin, kind := .definition }
