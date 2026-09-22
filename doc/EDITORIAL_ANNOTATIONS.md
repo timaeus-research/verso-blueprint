@@ -41,19 +41,15 @@ so the kinds are mutually exclusive and each annotation carries exactly one.
   paper's (an extra hypothesis, a missing clause, hypotheses neither implying the other). The
   body says what would close it.
 
-Two parameters render as small badges and qualify an annotation without changing its kind:
-
-- `review := unreviewed` (the default) or `review := "reviewed <initials> <date>"`, on every
-  annotation. An annotation is an agent's or author's assessment until a human checks it;
-  the reviewer flips the badge.
-- `effort := hours | session | multi-session | research`, optional, on `unformalised` and
-  `gap` only: the estimated cost of closing the item.
-
-Difficulty and authorship are badges rather than kinds because they do not change what a
-reader must weigh about the statement, only who has weighed it and what it would cost to
-close. Values are written as identifiers or as strings (`(effort := session)`,
-`(effort := "multi-session")`, `(review := "reviewed BS 2026-09-22")`); a value with a hyphen or
-a space must be a string.
+One parameter renders as a small badge and qualifies an annotation without changing its kind:
+`review := unreviewed` (the default) or `review := "reviewed <initials> <date>"`, on every
+annotation. An annotation is an agent's or author's assessment until a human checks it; the
+reviewer flips the badge. Authorship is a badge rather than a kind because it does not change
+what a reader must weigh about the statement, only who has weighed it. No effort estimate is
+recorded: estimates written by agents are unreliable, so such a badge would carry no
+information; the body of an owing item says what would close it, not what that would cost.
+Values are written as identifiers or as strings (`(missing := statement)`,
+`(review := "reviewed BS 2026-09-22")`); a value with a space must be a string.
 
 `unformalised` and `gap` owe work: a node containing one shows the warning “Formalisation
 TODO” in its header (as does the framework's older `:::formalizationTodo`), and a proof block
@@ -70,7 +66,7 @@ The mathematical statement, in the paper's formulation.
 The paper writes a superscript star; Lean uses the suffix `star`.
 :::
 
-:::gap (effort := session)
+:::gap
 The paper states a local threshold; Lean currently states a global threshold. Stating the
 paper's local result, with an equivalence lemma under its assumptions, would close it.
 :::
@@ -92,5 +88,5 @@ nested owing annotations from the Verso document tree, not from rendered HTML. C
 `data-kind="meta|formalizationTodo|unformalised|outOfScope|offSurface|correction|interpretation|notation|strengthening|gap"`
 and `data-review="unreviewed|reviewed"`, `.bp-editorial-title`, `.bp-editorial-kind`,
 `.bp-editorial-content`, the badges `.bp-badge.bp-badge-review[data-review=…]`,
-`.bp-badge-effort`, `.bp-badge-missing`, `.bp-badge-location`, and
+`.bp-badge-missing`, `.bp-badge-location`, and
 `.bp-correspondence-warning`.

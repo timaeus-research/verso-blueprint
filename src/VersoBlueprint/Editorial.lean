@@ -102,27 +102,6 @@ def Location.parse? : String → Option Location
   | "dependency" => some .dependency
   | _ => none
 
-/-- The estimated cost of closing an item that owes work. -/
-inductive Effort where
-  | hours
-  | session
-  | multiSession
-  | research
-deriving BEq, FromJson, ToJson, Repr
-
-def Effort.key : Effort → String
-  | .hours => "hours"
-  | .session => "session"
-  | .multiSession => "multi-session"
-  | .research => "research"
-
-def Effort.parse? : String → Option Effort
-  | "hours" => some .hours
-  | "session" => some .session
-  | "multi-session" | "multiSession" | "multi_session" => some .multiSession
-  | "research" => some .research
-  | _ => none
-
 /-- Whether a human has checked the annotation: an agent's assessment until then. -/
 inductive Review where
   | unreviewed
@@ -148,16 +127,14 @@ def Review.parse? (s : String) : Option Review :=
 structure Annotation where
   kind : Kind
   review : Review := .unreviewed
-  effort : Option Effort := none
   missing : Option Missing := none
   location : Option Location := none
 deriving BEq, FromJson, ToJson, Repr
 
 /-- Rebuild an annotation from the validated strings the block extension carries. -/
-def Annotation.ofStrings (kindKey review effort missing location : String) : Annotation :=
+def Annotation.ofStrings (kindKey review missing location : String) : Annotation :=
   { kind := (Kind.ofKey? kindKey).getD .meta
     review := (Review.parse? review).getD .unreviewed
-    effort := Effort.parse? effort
     missing := Missing.parse? missing
     location := Location.parse? location }
 
@@ -173,7 +150,6 @@ def css : String := r##"
 .bp-badge { display:inline-block; font-size:.7rem; font-weight:600; line-height:1.3; padding:.05rem .45rem; border-radius:.7rem; border:1px solid transparent; letter-spacing:.01em; }
 .bp-badge-review[data-review=unreviewed] { color:light-dark(#475569,#cbd5e1); background:light-dark(#e2e8f0,#334155); }
 .bp-badge-review[data-review=reviewed] { color:light-dark(#166534,#bbf7d0); background:light-dark(#dcfce7,#14532d); }
-.bp-badge-effort { color:light-dark(#57534e,#d6d3d1); background:transparent; border-color:light-dark(#a8a29e,#57534e); }
 .bp-badge-missing { color:light-dark(#991b1b,#fecaca); background:light-dark(#fee2e2,#450a0a); }
 .bp-badge-location { color:light-dark(#115e59,#99f6e4); background:light-dark(#ccfbf1,#134e4a); }
 .bp-editorial[data-kind=formalizationTodo], .bp-editorial[data-kind=gap] { border-left:4px solid #b45309; background:light-dark(#fff7ed,#302015); }
@@ -201,15 +177,13 @@ def Annotation.badges (a : Annotation) : Array Output.Html := Id.run do
   let mut out : Array Output.Html := #[]
   if let some m := a.missing then out := out.push (badge "bp-badge-missing" s!"missing: {m.key}")
   if let some l := a.location then out := out.push (badge "bp-badge-location" l.key)
-  if let some e := a.effort then out := out.push (badge "bp-badge-effort" e.key)
   out := out.push (badge "bp-badge-review" a.review.label #[("data-review", a.review.state)])
   return out
 
 def Annotation.badgeText (a : Annotation) : String :=
   let parts : Array String :=
     (a.missing.map fun m => s!"missing: {m.key}").toArray ++
-    (a.location.map Location.key).toArray ++
-    (a.effort.map Effort.key).toArray ++ #[a.review.label]
+    (a.location.map Location.key).toArray ++ #[a.review.label]
   " (" ++ String.intercalate "; " parts.toList ++ ")"
 
 def render (a : Annotation) (contents : Array Output.Html) : Output.Html :=
@@ -222,8 +196,8 @@ def render (a : Annotation) (contents : Array Output.Html) : Output.Html :=
     <div class="bp-editorial-content">{{.seq contents}}</div>
   </aside>}}
 
-block_extension Block.editorial (kindKey review effort missing location : String) where
-  data := toJson (Annotation.ofStrings kindKey review effort missing location)
+block_extension Block.editorial (kindKey review missing location : String) where
+  data := toJson (Annotation.ofStrings kindKey review missing location)
   extraCss := [css]
   traverse _ _ _ := pure none
   toHtml := some fun _ goB _ raw blocks => do
@@ -250,10 +224,9 @@ partial def hasFormalizationTodo : Doc.Block Manual → Bool
   | .dl items => items.any fun item => item.desc.any hasFormalizationTodo
   | _ => false
 
-/-- Raw directive options: `(review := …)`, `(effort := …)`, `(missing := …)`, `(location := …)`. -/
+/-- Raw directive options: `(review := …)`, `(missing := …)`, `(location := …)`. -/
 structure Config where
   review : String := "unreviewed"
-  effort : Option String := none
   missing : Option String := none
   location : Option String := none
 
@@ -272,10 +245,9 @@ def word : ValDesc m String where
     | other => throwError "Expected an identifier or a string, got {toMessageData other}"
 
 def Config.parse : ArgParse m Config :=
-  (fun review effort missing location =>
-    { review := review.getD "unreviewed", effort, missing, location })
-    <$> .named `review word true <*> .named `effort word true
-    <*> .named `missing word true <*> .named `location word true
+  (fun review missing location =>
+    { review := review.getD "unreviewed", missing, location })
+    <$> .named `review word true <*> .named `missing word true <*> .named `location word true
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
@@ -286,10 +258,6 @@ private def expand (kind : Kind) : DirectiveExpanderOf Config
   | cfg, contents => do
     let some review := Review.parse? cfg.review
       | throwError "Invalid (review := …): expected unreviewed or \"reviewed <initials> <date>\", got {cfg.review}"
-    let effort ← cfg.effort.mapM fun e => do
-      let some v := Effort.parse? e
-        | throwError "Invalid (effort := …): expected hours, session, multi-session or research, got {e}"
-      pure v
     let missing ← cfg.missing.mapM fun s => do
       let some v := Missing.parse? s
         | throwError "Invalid (missing := …): expected statement or proof, got {s}"
@@ -298,8 +266,6 @@ private def expand (kind : Kind) : DirectiveExpanderOf Config
       let some v := Location.parse? s
         | throwError "Invalid (location := …): expected library or dependency, got {s}"
       pure v
-    if effort.isSome && !(kind == .unformalised || kind == .gap) then
-      throwError "(effort := …) is allowed only on unformalised and gap annotations"
     if kind == .unformalised && missing.isNone then
       throwError "unformalised requires (missing := statement) or (missing := proof)"
     if kind != .unformalised && missing.isSome then
@@ -309,12 +275,11 @@ private def expand (kind : Kind) : DirectiveExpanderOf Config
     if kind != .offSurface && location.isSome then
       throwError "(location := …) is allowed only on offSurface annotations"
     let contents ← contents.mapM elabBlock
-    let effortKey := (effort.map Effort.key).getD ""
     let missingKey := (missing.map Missing.key).getD ""
     let locationKey := (location.map Location.key).getD ""
     ``(Verso.Doc.Block.other
-        (Block.editorial $(quote kind.key) $(quote review.label) $(quote effortKey)
-          $(quote missingKey) $(quote locationKey))
+        (Block.editorial $(quote kind.key) $(quote review.label) $(quote missingKey)
+          $(quote locationKey))
         #[$contents,*])
 
 end Informal.Editorial
@@ -359,7 +324,7 @@ alternatives. -/
   Editorial.expand .strengthening
 
 /-- The formal statement is weaker than or incomparable with the paper's; the body says what
-would close it. Optional `(effort := hours | session | multi-session | research)`. -/
+would close it. -/
 @[directive] def gap : DirectiveExpanderOf Editorial.Config := Editorial.expand .gap
 
 end Informal

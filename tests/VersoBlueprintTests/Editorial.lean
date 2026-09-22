@@ -51,10 +51,10 @@ was declared in a preceding Lean block.
 ::::theorem "editorial.owed"
 A statement with the two kinds that owe work.
 
-:::gap (effort := session)
+:::gap
 The paper's clause (2) is missing from the formal statement; stating it is proof work.
 :::
-:::unformalised (missing := statement) (effort := "multi-session")
+:::unformalised (missing := statement)
 The paper's corollary has no formal statement; untried.
 :::
 ::::
@@ -88,8 +88,6 @@ The paper's corollary has no formal statement; untried.
     countSubstr html "class=\"bp-badge bp-badge-review\"" == 10 &&
     hasSubstr html "class=\"bp-badge bp-badge-missing\">missing: statement" &&
     hasSubstr html "class=\"bp-badge bp-badge-location\">dependency" &&
-    hasSubstr html "class=\"bp-badge bp-badge-effort\">session" &&
-    hasSubstr html "class=\"bp-badge bp-badge-effort\">multi-session" &&
     countSubstr html "class=\"bp-correspondence-warning\"" == 2 &&
     !(hasSubstr html "Formalization gap") &&
     hasSubstr html "data-verso-hover" &&
@@ -99,8 +97,8 @@ The paper's corollary has no formal statement; untried.
 #guard_msgs in
 #eval show IO Bool from do
   let mk (kind : String) : Doc.Block Manual :=
-    .other (Editorial.Block.editorial kind "unreviewed" "" "" "") #[]
-  let ext := Editorial.Block.editorial "formalizationTodo" "unreviewed" "" "" ""
+    .other (Editorial.Block.editorial kind "unreviewed" "" "") #[]
+  let ext := Editorial.Block.editorial "formalizationTodo" "unreviewed" "" ""
   let data ← IO.ofExcept (fromJson? (α := Editorial.Annotation) ext.data)
   let block : Doc.Block Manual := .other ext #[.para #[.text "Outstanding"]]
   return data.kind == .formalizationTodo && Editorial.hasFormalizationTodo (.blockquote #[block]) &&
@@ -112,7 +110,7 @@ The paper's corollary has no formal statement; untried.
     !Editorial.hasFormalizationTodo (mk "strengthening") &&
     !Editorial.hasFormalizationTodo (mk "offSurface") &&
     !Editorial.hasFormalizationTodo (mk "outOfScope") &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial "correction" "unreviewed" "" "" "") #[block]) &&
+    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial "correction" "unreviewed" "" "") #[block]) &&
     (Editorial.Review.parse? "reviewed BS 2026-09-22" == some (.reviewed "BS" "2026-09-22")) &&
     (Editorial.Review.parse? "unreviewed" == some .unreviewed) &&
     (Editorial.Review.parse? "reviewed" == none)
