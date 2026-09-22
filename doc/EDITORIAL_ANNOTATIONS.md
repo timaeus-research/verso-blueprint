@@ -1,45 +1,69 @@
 # Editorial annotations
 
-Import `VersoBlueprint` to use six native, parameter-free directives. Their
-bodies are ordinary Verso blocks: references, mathematics, Lean roles and their
-hover information retain their usual rendering. There is no HTML post-processing.
+Import `VersoBlueprint` to use the native annotation directives. Their bodies are ordinary
+Verso blocks: references, mathematics, Lean roles and their hover information retain their
+usual rendering. There is no HTML post-processing.
 
-- `:::translation` renders **Notation in Lean**. Use it only for harmless notation
-  correspondence, such as `wstar` for the paper's superscript star.
-- `:::meta` renders **Formalisation note**. Use it for implementation or editorial
-  choices, not mathematical explanations or changes to a theorem.
-- `:::formalizationTodo` renders **Formalisation TODO**. Name missing definitions,
-  statements, or unsettled correspondence. Describe the current gap neutrally
-  and the one or more ways it could resolve, without predictions or preferred
-  outcomes. It has no “accepted,” “resolved,” or approval option.
-- `:::clarification` renders **Clarification**. Explain a settled convention
-  where the paper is underspecified; state the convention in ordinary mathematics.
-- `:::correction` renders **Correction**. Explain a correction and
-  link to the counterexample, exact-negation corollary, and corrected statement.
-  The label itself supplies no evidence and does not certify the linked proofs.
-- `:::outOfScope` renders **Out of scope**. Explain deliberately omitted material
-  and why it is excluded. Material introduced but unused by the paper's results
-  is a valid candidate. This is a coverage decision, not a mathematical verdict.
+An annotation compares one item of the paper (a numbered statement, a clause of one, a
+definition, an equation) with the formalisation. Three questions decide its kind, in order,
+so the kinds are mutually exclusive and each annotation carries exactly one; one further kind,
+`translation`, is a dictionary entry orthogonal to the comparison.
 
-Missing in-scope definitions and statements are TODOs. A TODO may resolve by an
-explicit, justified scope exclusion, including for definitions and statements.
-Do not exclude prerequisites of a result still claimed in scope: supply them or
-explicitly narrow coverage of the affected results too. Scope notes do not hide
-nested TODOs or discharge correspondence obligations.
-A faithful statement may deliberately have a sorried proof: missing proofs alone
-use existing proof-status tracking and do not require a TODO. In a statement-first
-document, this also applies to fully specified equivalence and correction claims.
-Explicit witnesses, their hypotheses, the original proposition, its exact
-negation, and the corrected statement must still be present where required.
-Omitted proofs remain correspondence proof obligations, not verified evidence;
-say that their formal proofs are omitted. Missing claims or witnesses and
-unresolved assumptions or conclusions remain statement TODOs.
+**Does the paper's item have a formalised counterpart?**
 
-Migration: replace `formalizationGap` with `formalizationTodo` and rewrite the
-body using the neutral current-state/possible-resolutions convention above.
-Regenerate documents and preview manifests: the serialized node flag is now
-`hasFormalizationTodo`. Clarification and correction are separate directives,
-not approval modes of a TODO.
+- `:::unformalised` renders **Unformalised**. None. The parameter `missing := statement`
+  (no Lean statement) or `missing := proof` (a statement written without proof, for example
+  as a challenge statement or a hypothesis structure) is required. The body says the state
+  and why (untried, partial, in progress, truth uncertain) and what would settle it.
+- `:::outOfScope` renders **Out of scope**. None and none owed, by a recorded decision.
+  Explain what is excluded and why. This is a coverage decision, not a mathematical verdict,
+  and it does not discharge any obligation. Do not exclude prerequisites of a result still
+  claimed in scope.
+
+**For an item with a counterpart of record: is the paper's claim true as printed?**
+
+- `:::correction` renders **Correction**. False as printed (a wrong sign, factor or
+  normalisation, an inconsistent display, or a hypothesis the claim needs and the paper does
+  not print); the formalisation states the corrected version, and the body gives the reason.
+  An added hypothesis that only the formal proof needs, while the paper's claim may hold
+  without it, is a `gap`, not a correction. The label itself supplies no evidence and does not
+  certify the linked proofs.
+- `:::interpretation` renders **Interpretation**. Underspecified; the formalisation fixes one
+  reading, and the body names the alternatives and why this one.
+
+**For a true claim: how do the two statements compare?**
+
+- `:::restatement` renders **Restatement**. The formal statement is a logically equivalent
+  form of the paper's whole statement. Used sparingly.
+- `:::strengthening` renders **Strengthening**. The formal statement implies the paper's and
+  the converse is not claimed.
+- `:::gap` renders **Gap**. The formal statement is weaker than or incomparable with the
+  paper's (an extra hypothesis, a missing clause, hypotheses neither implying the other). The
+  body says what would close it.
+
+**The dictionary.**
+
+- `:::translation` renders **Translation**, compactly. One entry per directive, for one
+  important unit whose Lean spelling looks very different from the paper's: the Lean
+  expression in code, "is the paper's" (or "is"), the paper's notation, the reference in
+  parentheses where useful (`` `sliceMax A.zeroSlice ξ` is the paper's $`M(\xi)` (Main
+  Theorem 6.4 (1)) ``). It is not for saying that a whole theorem is an equivalent rephrasing;
+  that is a `restatement`.
+
+One parameter renders as a small badge and qualifies an annotation without changing its kind:
+`review := unreviewed` (the default) or `review := "reviewed <initials> <date>"`, on every
+annotation, translations included. An annotation is an agent's or author's assessment until a
+human checks it; the reviewer flips the badge. Authorship is a badge rather than a kind because
+it does not change what a reader must weigh about the statement, only who has weighed it. No
+effort estimate is recorded: estimates written by agents are unreliable, so such a badge would
+carry no information; the body of an owing item says what would close it, not what that would
+cost. Values are written as identifiers or as strings (`(missing := statement)`,
+`(review := "reviewed BS 2026-09-22")`); a value with a space must be a string.
+
+`unformalised` and `gap` owe work: a node containing one shows the badge “Owes work” in its
+header (as does the framework's older `:::formalizationTodo`), and a proof block containing one
+is not folded. The other kinds owe nothing. `:::meta` (**Formalisation note**)
+remains available for implementation commentary.
 
 Put a note concerning a particular theorem or definition inside that node:
 
@@ -48,48 +72,33 @@ Put a note concerning a particular theorem or definition inside that node:
 The mathematical statement, in the paper's formulation.
 
 :::translation
-The paper writes a superscript star; Lean uses the suffix `star`.
+`threshold x` is the paper's $`\tau(x)` (Definition 2.1).
 :::
 
-:::formalizationTodo
-The paper states a local threshold; Lean currently states a global threshold.
-State the paper's local result, supply an equivalence lemma under its assumptions,
-or give an explicit counterexample and exact negation supporting a corrected result.
+:::gap
+The paper states a local threshold; Lean currently states a global threshold. Stating the
+paper's local result, with an equivalence lemma under its assumptions, would close it.
 :::
 ::::
 ````
 
-Global implementation or notation notes may be standalone. The directives are
-not numbered mathematical nodes and do not change declaration proof status.
-Nested TODOs additionally mark the enclosing node's header “Formalisation TODO.”
-A proof containing a TODO is not folded. The TODO body remains visible, without
-repeated proof-status boilerplate.
+Global implementation or notation notes may be standalone. The directives are not numbered
+mathematical nodes and do not change declaration proof status. A faithful statement may
+deliberately have a sorried proof: missing proofs alone use the existing proof status; a
+statement written without proof that the document counts as missing is `unformalised` with
+`missing := proof`. A substantive change of assumptions or conclusions is a `gap`, a
+`strengthening` or a `restatement`, never a `translation` or an `interpretation` merely because
+an author chose it; an assertion that the paper is false is a `correction` and needs its
+reason in the body. Annotations cannot serve as evidence that the
+formalisation corresponds to the paper.
 
-A formalisation TODO means missing statement work in the blueprint, not an error in the paper.
-Name the omitted claim, altered hypothesis, or missing lemma at the affected
-statement or application. An auxiliary definition or a conditional theorem is
-not itself a gap merely because it differs from the paper's presentation.
-Explain such mathematics in ordinary prose; mark a gap where an application
-needs a hypothesis or identification whose required statement is missing or
-whose mathematical scope remains unresolved.
-
-Mathematical explanations stay in mathematical prose, and proof explanations in
-proof nodes. A nontrivial alternative formulation requires an equivalence
-lemma, including assumptions and domains. An assertion that the paper is false
-requires an explicit counterexample and a corollary asserting the original
-claim's exact negation. These are ordinary linked mathematical nodes, optionally in a
-discrepancy appendix; a correction annotation only explains and links them.
-Their proofs must establish the claimed correspondence before it can be called
-verified. If the complete statements deliberately have omitted proofs, use their
-proof status rather than a statement TODO; do not describe the correction as
-verified. Until the statements, witnesses and source scope are settled, retain
-the TODO warning. A substantive
-change of assumptions or conclusions is not a clarification merely because an
-author chose it. Meta annotations cannot serve as
-evidence that the formalization corresponds to the paper.
-
-Implementation: `src/VersoBlueprint/Editorial.lean`. The theorem/definition
-renderer detects nested TODO blocks from the Verso document tree, not
-from rendered HTML. CSS hooks are `.bp-editorial` with
-`data-kind="translation|meta|formalizationTodo|clarification|correction|outOfScope"`, `.bp-editorial-title`,
-`.bp-editorial-content`, and `.bp-correspondence-warning`.
+Implementation: `src/VersoBlueprint/Editorial.lean`. The theorem/definition renderer detects
+nested owing annotations from the Verso document tree, not from rendered HTML. CSS hooks are
+`.bp-editorial` with
+`data-kind="meta|formalizationTodo|unformalised|outOfScope|correction|interpretation|translation|restatement|strengthening|gap"`
+and `data-review="unreviewed|reviewed"`, `.bp-editorial-title`, `.bp-editorial-kind`,
+`.bp-editorial-content`, the badges `.bp-badge.bp-badge-review[data-review=…]` and
+`.bp-badge-missing`, and the header badge `.bp-correspondence-warning`. One design: a 3px left
+rule and the Title-case kind title in the kind's hue (set by the custom property `--bp-kind`),
+warm hues only for the kinds that owe work, the body in the page colour, lowercase badges in one
+style, every colour a `light-dark()` pair.
