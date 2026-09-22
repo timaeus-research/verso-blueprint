@@ -258,8 +258,8 @@ structure Config where
   location : Option String := none
 
 section
-variable [Monad m] [MonadInfoTree m] [MonadResolveName m] [MonadLiftT CoreM m] [MonadEnv m]
-    [MonadError m] [MonadFileMap m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
+variable {m : Type → Type} [Monad m] [MonadInfoTree m] [MonadResolveName m] [MonadLiftT CoreM m]
+    [MonadEnv m] [MonadError m] [MonadFileMap m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
 /-- A short value written either as an identifier (`session`) or as a string (`"reviewed BS 2026-09-22"`). -/
 def word : ValDesc m String where
