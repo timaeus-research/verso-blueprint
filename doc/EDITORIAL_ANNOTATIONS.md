@@ -52,7 +52,8 @@ Two parameters render as small badges and qualify an annotation without changing
 Difficulty and authorship are badges rather than kinds because they do not change what a
 reader must weigh about the statement, only who has weighed it and what it would cost to
 close. Values are written as identifiers or as strings (`(effort := session)`,
-`(review := "reviewed BS 2026-09-22")`).
+`(effort := "multi-session")`, `(review := "reviewed BS 2026-09-22")`); a value with a hyphen or
+a space must be a string.
 
 `unformalised` and `gap` owe work: a node containing one shows the warning “Formalisation
 TODO” in its header (as does the framework's older `:::formalizationTodo`), and a proof block
