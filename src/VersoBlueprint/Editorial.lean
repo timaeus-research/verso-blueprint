@@ -258,7 +258,8 @@ structure Config where
   location : Option String := none
 
 section
-variable {m : Type → Type} [Monad m] [MonadInfoTree m] [MonadResolveName m] [MonadLiftT CoreM m]
+variable {m : Type → Type} [Monad m] [Lean.Elab.MonadInfoTree m] [MonadResolveName m]
+    [MonadLiftT CoreM m]
     [MonadEnv m] [MonadError m] [MonadFileMap m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
 /-- A short value written either as an identifier (`session`) or as a string (`"reviewed BS 2026-09-22"`). -/
