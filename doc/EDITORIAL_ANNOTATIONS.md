@@ -1,6 +1,6 @@
 # Editorial annotations
 
-Import `VersoBlueprint` to use six native, parameter-free directives. Their
+Import `VersoBlueprint` to use ten native, parameter-free directives. Their
 bodies are ordinary Verso blocks: references, mathematics, Lean roles and their
 hover information retain their usual rendering. There is no HTML post-processing.
 
@@ -12,11 +12,22 @@ hover information retain their usual rendering. There is no HTML post-processing
   statements, or unsettled correspondence. Describe the current gap neutrally
   and the one or more ways it could resolve, without predictions or preferred
   outcomes. It has no “accepted,” “resolved,” or approval option.
+- `:::todoProof`, `:::todoFormulation`, `:::todoHard` render **Formalisation TODO:
+  proof work**, **Formalisation TODO: formulation** and **Formalisation TODO: hard**. They
+  refine `:::formalizationTodo` by what blocks the paper's statement: only proofs are
+  missing and the current definitions suffice (`todoProof`); a Lean formulation of a notion
+  of the paper has to be chosen before proofs can start (`todoFormulation`); new mathematics
+  or infrastructure is needed, or the question is open (`todoHard`). Each is a TODO in every
+  other respect (node header warning, unfolded proofs, `hasFormalizationTodo`).
 - `:::clarification` renders **Clarification**. Explain a settled convention
   where the paper is underspecified; state the convention in ordinary mathematics.
 - `:::correction` renders **Correction**. Explain a correction and
   link to the counterexample, exact-negation corollary, and corrected statement.
   The label itself supplies no evidence and does not certify the linked proofs.
+- `:::deviation` renders **Deviation by choice**. Use it where the paper is neither wrong
+  nor underspecified and the formal statement nevertheless differs by the formaliser's
+  choice: say whether it is equivalent to or stronger than the paper's and why. Nothing is
+  owed on its account; a formal statement that is weaker is a TODO, not a deviation.
 - `:::outOfScope` renders **Out of scope**. Explain deliberately omitted material
   and why it is excluded. Material introduced but unused by the paper's results
   is a valid candidate. This is a coverage decision, not a mathematical verdict.
@@ -61,7 +72,7 @@ or give an explicit counterexample and exact negation supporting a corrected res
 
 Global implementation or notation notes may be standalone. The directives are
 not numbered mathematical nodes and do not change declaration proof status.
-Nested TODOs additionally mark the enclosing node's header “Formalisation TODO.”
+Nested TODOs (any of the four TODO kinds) additionally mark the enclosing node's header “Formalisation TODO.”
 A proof containing a TODO is not folded. The TODO body remains visible, without
 repeated proof-status boilerplate.
 
@@ -91,5 +102,5 @@ evidence that the formalization corresponds to the paper.
 Implementation: `src/VersoBlueprint/Editorial.lean`. The theorem/definition
 renderer detects nested TODO blocks from the Verso document tree, not
 from rendered HTML. CSS hooks are `.bp-editorial` with
-`data-kind="translation|meta|formalizationTodo|clarification|correction|outOfScope"`, `.bp-editorial-title`,
+`data-kind="translation|meta|formalizationTodo|todoProof|todoFormulation|todoHard|clarification|correction|deviation|outOfScope"`, `.bp-editorial-title`,
 `.bp-editorial-content`, and `.bp-correspondence-warning`.
