@@ -10,22 +10,25 @@ namespace Informal.Editorial
 
 An annotation compares one item of the paper with the formalisation. Three questions decide its
 kind, in order. Does the item have a formalised counterpart? If none: `unformalised` (with
-`missing := statement | proof`), `outOfScope` (none and none owed, by decision) or `offSurface`
-(formalised and proved, but not a theorem of record; `location := library | dependency`). For an
-item with a counterpart of record, is the paper's claim true as printed? `correction` (false;
-the corrected version is stated) or `interpretation` (underspecified; one reading is fixed). For
-a true claim, how do the statements compare? `notation` (same content), `strengthening` (the
-formal statement implies the paper's) or `gap` (weaker or incomparable). `meta` and
+`missing := statement | proof`) or `outOfScope` (none and none owed, by decision). For an item
+with a counterpart of record, is the paper's claim true as printed? `missingHypothesis` (it needs
+a hypothesis it does not print; the formalisation adds it), `correction` (false for another
+reason; the corrected version is stated) or `interpretation` (underspecified; one reading is
+fixed). For a true claim, how do the statements compare? `restatement` (a logically equivalent
+form of the whole statement, used sparingly), `strengthening` (the formal statement implies the
+paper's, converse not claimed) or `gap` (weaker or incomparable). `translation` is the dictionary
+(this Lean expression is the paper's such-and-such), orthogonal to the comparison. `meta` and
 `formalizationTodo` are the framework's older kinds and remain available. -/
 inductive Kind where
   | «meta»
   | formalizationTodo
   | unformalised
   | outOfScope
-  | offSurface
+  | missingHypothesis
   | correction
   | interpretation
-  | «notation»
+  | translation
+  | restatement
   | strengthening
   | gap
 deriving BEq, FromJson, ToJson, Quote, Repr
@@ -35,10 +38,11 @@ def Kind.key : Kind → String
   | .formalizationTodo => "formalizationTodo"
   | .unformalised => "unformalised"
   | .outOfScope => "outOfScope"
-  | .offSurface => "offSurface"
+  | .missingHypothesis => "missingHypothesis"
   | .correction => "correction"
   | .interpretation => "interpretation"
-  | .notation => "notation"
+  | .translation => "translation"
+  | .restatement => "restatement"
   | .strengthening => "strengthening"
   | .gap => "gap"
 
@@ -47,10 +51,11 @@ def Kind.ofKey? : String → Option Kind
   | "formalizationTodo" => some .formalizationTodo
   | "unformalised" => some .unformalised
   | "outOfScope" => some .outOfScope
-  | "offSurface" => some .offSurface
+  | "missingHypothesis" => some .missingHypothesis
   | "correction" => some .correction
   | "interpretation" => some .interpretation
-  | "notation" => some .notation
+  | "translation" => some .translation
+  | "restatement" => some .restatement
   | "strengthening" => some .strengthening
   | "gap" => some .gap
   | _ => none
@@ -60,10 +65,11 @@ def Kind.title : Kind → String
   | .formalizationTodo => "Formalisation TODO"
   | .unformalised => "Unformalised"
   | .outOfScope => "Out of scope"
-  | .offSurface => "Off-surface"
+  | .missingHypothesis => "Missing hypothesis"
   | .correction => "Correction"
   | .interpretation => "Interpretation"
-  | .notation => "Notation"
+  | .translation => "Translation"
+  | .restatement => "Restatement"
   | .strengthening => "Strengthening"
   | .gap => "Gap"
 
@@ -85,21 +91,6 @@ def Missing.key : Missing → String
 def Missing.parse? : String → Option Missing
   | "statement" => some .statement
   | "proof" => some .proof
-  | _ => none
-
-/-- Where an `offSurface` item is proved: in the library itself, or in a dependency. -/
-inductive Location where
-  | library
-  | dependency
-deriving BEq, FromJson, ToJson, Repr
-
-def Location.key : Location → String
-  | .library => "library"
-  | .dependency => "dependency"
-
-def Location.parse? : String → Option Location
-  | "library" => some .library
-  | "dependency" => some .dependency
   | _ => none
 
 /-- Whether a human has checked the annotation: an agent's assessment until then. -/
@@ -128,15 +119,13 @@ structure Annotation where
   kind : Kind
   review : Review := .unreviewed
   missing : Option Missing := none
-  location : Option Location := none
 deriving BEq, FromJson, ToJson, Repr
 
 /-- Rebuild an annotation from the validated strings the block extension carries. -/
-def Annotation.ofStrings (kindKey review missing location : String) : Annotation :=
+def Annotation.ofStrings (kindKey review missing : String) : Annotation :=
   { kind := (Kind.ofKey? kindKey).getD .meta
     review := (Review.parse? review).getD .unreviewed
-    missing := Missing.parse? missing
-    location := Location.parse? location }
+    missing := Missing.parse? missing }
 
 def correspondenceWarning : Output.Html :=
   .tag "span" #[("class", "bp-correspondence-warning")]
@@ -151,21 +140,23 @@ def css : String := r##"
 .bp-badge-review[data-review=unreviewed] { color:light-dark(#475569,#cbd5e1); background:light-dark(#e2e8f0,#334155); }
 .bp-badge-review[data-review=reviewed] { color:light-dark(#166534,#bbf7d0); background:light-dark(#dcfce7,#14532d); }
 .bp-badge-missing { color:light-dark(#991b1b,#fecaca); background:light-dark(#fee2e2,#450a0a); }
-.bp-badge-location { color:light-dark(#115e59,#99f6e4); background:light-dark(#ccfbf1,#134e4a); }
 .bp-editorial[data-kind=formalizationTodo], .bp-editorial[data-kind=gap] { border-left:4px solid #b45309; background:light-dark(#fff7ed,#302015); }
 .bp-editorial[data-kind=formalizationTodo] > .bp-editorial-title, .bp-editorial[data-kind=gap] > .bp-editorial-title { color:light-dark(#9a3412,#fdba74); }
 .bp-editorial[data-kind=unformalised] { border-left:4px solid #b91c1c; background:light-dark(#fef2f2,#2a1414); }
 .bp-editorial[data-kind=unformalised] > .bp-editorial-title { color:light-dark(#991b1b,#fca5a5); }
+.bp-editorial[data-kind=missingHypothesis] { border-left-color:light-dark(#be185d,#f9a8d4); }
+.bp-editorial[data-kind=missingHypothesis] > .bp-editorial-title { color:light-dark(#9d174d,#fbcfe8); }
 .bp-editorial[data-kind=correction] { border-left-color:light-dark(#7e22ce,#d8b4fe); }
 .bp-editorial[data-kind=correction] > .bp-editorial-title { color:light-dark(#6b21a8,#e9d5ff); }
 .bp-editorial[data-kind=interpretation] { border-left-color:light-dark(#0369a1,#7dd3fc); }
 .bp-editorial[data-kind=interpretation] > .bp-editorial-title { color:light-dark(#075985,#bae6fd); }
-.bp-editorial[data-kind=notation] { border-left-color:light-dark(#64748b,#94a3b8); }
-.bp-editorial[data-kind=notation] > .bp-editorial-title { color:light-dark(#475569,#cbd5e1); }
+.bp-editorial[data-kind=translation] { margin:.5rem 0; padding:.35rem .8rem; border-left-color:light-dark(#64748b,#94a3b8); background:transparent; border-top:1px dotted light-dark(#cbd5e1,#475569); border-bottom:1px dotted light-dark(#cbd5e1,#475569); }
+.bp-editorial[data-kind=translation] > .bp-editorial-title { font-size:.75rem; margin-bottom:.1rem; color:light-dark(#475569,#cbd5e1); text-transform:uppercase; letter-spacing:.04em; }
+.bp-editorial[data-kind=translation] > .bp-editorial-content { font-size:.95em; }
+.bp-editorial[data-kind=restatement] { border-left-color:light-dark(#4d7c0f,#bef264); }
+.bp-editorial[data-kind=restatement] > .bp-editorial-title { color:light-dark(#3f6212,#d9f99d); }
 .bp-editorial[data-kind=strengthening] { border-left-color:light-dark(#15803d,#86efac); }
 .bp-editorial[data-kind=strengthening] > .bp-editorial-title { color:light-dark(#166534,#bbf7d0); }
-.bp-editorial[data-kind=offSurface] { border-left-color:light-dark(#0f766e,#5eead4); }
-.bp-editorial[data-kind=offSurface] > .bp-editorial-title { color:light-dark(#115e59,#99f6e4); }
 .bp-editorial[data-kind=outOfScope] { border-left-style:dashed; }
 .bp-correspondence-warning { font-size:.8rem; font-weight:600; color:light-dark(#9a3412,#fdba74); }
 "##
@@ -176,14 +167,12 @@ def badge (cls text : String) (extra : Array (String × String) := #[]) : Output
 def Annotation.badges (a : Annotation) : Array Output.Html := Id.run do
   let mut out : Array Output.Html := #[]
   if let some m := a.missing then out := out.push (badge "bp-badge-missing" s!"missing: {m.key}")
-  if let some l := a.location then out := out.push (badge "bp-badge-location" l.key)
   out := out.push (badge "bp-badge-review" a.review.label #[("data-review", a.review.state)])
   return out
 
 def Annotation.badgeText (a : Annotation) : String :=
   let parts : Array String :=
-    (a.missing.map fun m => s!"missing: {m.key}").toArray ++
-    (a.location.map Location.key).toArray ++ #[a.review.label]
+    (a.missing.map fun m => s!"missing: {m.key}").toArray ++ #[a.review.label]
   " (" ++ String.intercalate "; " parts.toList ++ ")"
 
 def render (a : Annotation) (contents : Array Output.Html) : Output.Html :=
@@ -196,8 +185,8 @@ def render (a : Annotation) (contents : Array Output.Html) : Output.Html :=
     <div class="bp-editorial-content">{{.seq contents}}</div>
   </aside>}}
 
-block_extension Block.editorial (kindKey review missing location : String) where
-  data := toJson (Annotation.ofStrings kindKey review missing location)
+block_extension Block.editorial (kindKey review missing : String) where
+  data := toJson (Annotation.ofStrings kindKey review missing)
   extraCss := [css]
   traverse _ _ _ := pure none
   toHtml := some fun _ goB _ raw blocks => do
@@ -224,18 +213,17 @@ partial def hasFormalizationTodo : Doc.Block Manual → Bool
   | .dl items => items.any fun item => item.desc.any hasFormalizationTodo
   | _ => false
 
-/-- Raw directive options: `(review := …)`, `(missing := …)`, `(location := …)`. -/
+/-- Raw directive options: `(review := …)` and `(missing := …)`. -/
 structure Config where
   review : String := "unreviewed"
   missing : Option String := none
-  location : Option String := none
 
 section
 variable {m : Type → Type} [Monad m] [Lean.Elab.MonadInfoTree m] [MonadResolveName m]
     [MonadLiftT CoreM m]
     [MonadEnv m] [MonadError m] [MonadFileMap m] [MonadLog m] [AddMessageContext m] [MonadOptions m]
 
-/-- A short value written either as an identifier (`session`) or as a string (`"reviewed BS 2026-09-22"`). -/
+/-- A short value written either as an identifier (`statement`) or as a string (`"reviewed BS 2026-09-22"`). -/
 def word : ValDesc m String where
   description := doc!"a word, as an identifier or a string"
   signature := .String
@@ -245,9 +233,8 @@ def word : ValDesc m String where
     | other => throwError "Expected an identifier or a string, got {toMessageData other}"
 
 def Config.parse : ArgParse m Config :=
-  (fun review missing location =>
-    { review := review.getD "unreviewed", missing, location })
-    <$> .named `review word true <*> .named `missing word true <*> .named `location word true
+  (fun review missing => { review := review.getD "unreviewed", missing })
+    <$> .named `review word true <*> .named `missing word true
 
 instance : FromArgs Config m where
   fromArgs := Config.parse
@@ -262,24 +249,14 @@ private def expand (kind : Kind) : DirectiveExpanderOf Config
       let some v := Missing.parse? s
         | throwError "Invalid (missing := …): expected statement or proof, got {s}"
       pure v
-    let location ← cfg.location.mapM fun s => do
-      let some v := Location.parse? s
-        | throwError "Invalid (location := …): expected library or dependency, got {s}"
-      pure v
     if kind == .unformalised && missing.isNone then
       throwError "unformalised requires (missing := statement) or (missing := proof)"
     if kind != .unformalised && missing.isSome then
       throwError "(missing := …) is allowed only on unformalised annotations"
-    if kind == .offSurface && location.isNone then
-      throwError "offSurface requires (location := library) or (location := dependency)"
-    if kind != .offSurface && location.isSome then
-      throwError "(location := …) is allowed only on offSurface annotations"
     let contents ← contents.mapM elabBlock
     let missingKey := (missing.map Missing.key).getD ""
-    let locationKey := (location.map Location.key).getD ""
     ``(Verso.Doc.Block.other
-        (Block.editorial $(quote kind.key) $(quote review.label) $(quote missingKey)
-          $(quote locationKey))
+        (Block.editorial $(quote kind.key) $(quote review.label) $(quote missingKey))
         #[$contents,*])
 
 end Informal.Editorial
@@ -303,12 +280,14 @@ and why, and what would settle it. -/
 decision. Explain what is excluded and why; this does not discharge any mathematical obligation. -/
 @[directive] def outOfScope : DirectiveExpanderOf Editorial.Config := Editorial.expand .outOfScope
 
-/-- Formalised and proved, but not a theorem of record. Requires `(location := library)` or
-`(location := dependency)`. -/
-@[directive] def offSurface : DirectiveExpanderOf Editorial.Config := Editorial.expand .offSurface
+/-- The paper's printed statement needs a hypothesis it does not print (without it the claim is
+false or not well-formed); the formalisation states it with the hypothesis added. -/
+@[directive] def missingHypothesis : DirectiveExpanderOf Editorial.Config :=
+  Editorial.expand .missingHypothesis
 
-/-- The paper's claim is false as printed; the formalisation states the corrected version, with
-the reason. The label itself supplies no evidence. -/
+/-- The paper's claim is false as printed for a reason other than a missing hypothesis (a wrong
+sign, factor or normalisation, an inconsistent display); the formalisation states the corrected
+version, with the reason. The label itself supplies no evidence. -/
 @[directive] def correction : DirectiveExpanderOf Editorial.Config := Editorial.expand .correction
 
 /-- The paper's claim is underspecified; the formalisation fixes one reading and names the
@@ -316,10 +295,15 @@ alternatives. -/
 @[directive] def interpretation : DirectiveExpanderOf Editorial.Config :=
   Editorial.expand .interpretation
 
-/-- Same content as the paper's, in Lean spelling or packaging. -/
-@[directive] def «notation» : DirectiveExpanderOf Editorial.Config := Editorial.expand .notation
+/-- A dictionary entry for one unit whose Lean spelling looks very different from the paper's:
+the Lean expression in code, "is the paper's", the paper's notation, a reference. -/
+@[directive] def translation : DirectiveExpanderOf Editorial.Config := Editorial.expand .translation
 
-/-- The formal statement implies the paper's. -/
+/-- The formalisation states a logically equivalent form of the paper's whole statement. Used
+sparingly. -/
+@[directive] def restatement : DirectiveExpanderOf Editorial.Config := Editorial.expand .restatement
+
+/-- The formal statement implies the paper's and the converse is not claimed. -/
 @[directive] def strengthening : DirectiveExpanderOf Editorial.Config :=
   Editorial.expand .strengthening
 

@@ -17,8 +17,8 @@ The successor threshold.
 def editorialThreshold (n : Nat) : Nat := n + 1
 ```
 
-:::notation
-The notation {Verso.Genre.Manual.InlineLean.lean}`Nat` retains its Lean hover information.
+:::translation
+`editorialThreshold n` is the paper's $`n + 1`; the notation {Verso.Genre.Manual.InlineLean.lean}`Nat` retains its Lean hover information.
 :::
 :::meta
 Proof implementation lives in an imported module.
@@ -29,11 +29,14 @@ The successor convention is explicit in the preceding definition.
 :::correction
 A correction annotation explains linked evidence; it does not certify a proof.
 :::
+:::missingHypothesis
+The paper's statement needs the threshold to be positive; the formal statement adds it.
+:::
 :::strengthening
 The formal statement is for every natural number where the paper has positive ones.
 :::
-:::offSurface (location := dependency)
-The resolution theorem is consumed as a proved theorem of another package.
+:::restatement
+The formal statement is the paper's, with the two clauses in the other order.
 :::
 :::outOfScope
 An unused variant is omitted; no retained result depends on it.
@@ -64,13 +67,15 @@ The paper's corollary has no formal statement; untried.
 #guard_msgs in
 #eval! do
   let html ← renderManualDocHtmlString impls editorialDoc
-  pure <| countSubstr html "class=\"bp-editorial\"" == 10 &&
-    hasSubstr html "data-kind=\"notation\"" &&
+  pure <| countSubstr html "class=\"bp-editorial\"" == 11 &&
+    hasSubstr html "data-kind=\"translation\"" &&
     hasSubstr html "data-kind=\"meta\"" &&
     hasSubstr html "data-kind=\"interpretation\"" &&
     hasSubstr html "data-kind=\"correction\"" &&
+    hasSubstr html "data-kind=\"missingHypothesis\"" &&
+    hasSubstr html "aria-label=\"Missing hypothesis\"" &&
     hasSubstr html "data-kind=\"strengthening\"" &&
-    hasSubstr html "data-kind=\"offSurface\"" &&
+    hasSubstr html "data-kind=\"restatement\"" &&
     hasSubstr html "data-kind=\"outOfScope\"" &&
     hasSubstr html "data-kind=\"formalizationTodo\"" &&
     hasSubstr html "data-kind=\"gap\"" &&
@@ -78,16 +83,15 @@ The paper's corollary has no formal statement; untried.
     hasSubstr html "aria-label=\"Interpretation\"" &&
     hasSubstr html "aria-label=\"Correction\"" &&
     hasSubstr html "aria-label=\"Strengthening\"" &&
-    hasSubstr html "aria-label=\"Off-surface\"" &&
+    hasSubstr html "aria-label=\"Restatement\"" &&
     hasSubstr html "aria-label=\"Out of scope\"" &&
-    hasSubstr html "aria-label=\"Notation\"" &&
+    hasSubstr html "aria-label=\"Translation\"" &&
     hasSubstr html "aria-label=\"Gap\"" &&
     hasSubstr html "aria-label=\"Unformalised\"" &&
     countSubstr html "data-review=\"reviewed\"" == 2 &&
     hasSubstr html "reviewed EJ 2026-01-01" &&
-    countSubstr html "class=\"bp-badge bp-badge-review\"" == 10 &&
+    countSubstr html "class=\"bp-badge bp-badge-review\"" == 11 &&
     hasSubstr html "class=\"bp-badge bp-badge-missing\">missing: statement" &&
-    hasSubstr html "class=\"bp-badge bp-badge-location\">dependency" &&
     countSubstr html "class=\"bp-correspondence-warning\"" == 2 &&
     !(hasSubstr html "Formalization gap") &&
     hasSubstr html "data-verso-hover" &&
@@ -97,20 +101,21 @@ The paper's corollary has no formal statement; untried.
 #guard_msgs in
 #eval show IO Bool from do
   let mk (kind : String) : Doc.Block Manual :=
-    .other (Editorial.Block.editorial kind "unreviewed" "" "") #[]
-  let ext := Editorial.Block.editorial "formalizationTodo" "unreviewed" "" ""
+    .other (Editorial.Block.editorial kind "unreviewed" "") #[]
+  let ext := Editorial.Block.editorial "formalizationTodo" "unreviewed" ""
   let data ← IO.ofExcept (fromJson? (α := Editorial.Annotation) ext.data)
   let block : Doc.Block Manual := .other ext #[.para #[.text "Outstanding"]]
   return data.kind == .formalizationTodo && Editorial.hasFormalizationTodo (.blockquote #[block]) &&
     Editorial.hasFormalizationTodo (mk "gap") &&
     Editorial.hasFormalizationTodo (mk "unformalised") &&
-    !Editorial.hasFormalizationTodo (mk "notation") &&
+    !Editorial.hasFormalizationTodo (mk "translation") &&
+    !Editorial.hasFormalizationTodo (mk "restatement") &&
     !Editorial.hasFormalizationTodo (mk "interpretation") &&
     !Editorial.hasFormalizationTodo (mk "correction") &&
+    !Editorial.hasFormalizationTodo (mk "missingHypothesis") &&
     !Editorial.hasFormalizationTodo (mk "strengthening") &&
-    !Editorial.hasFormalizationTodo (mk "offSurface") &&
     !Editorial.hasFormalizationTodo (mk "outOfScope") &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial "correction" "unreviewed" "" "") #[block]) &&
+    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial "correction" "unreviewed" "") #[block]) &&
     (Editorial.Review.parse? "reviewed BS 2026-09-22" == some (.reviewed "BS" "2026-09-22")) &&
     (Editorial.Review.parse? "unreviewed" == some .unreviewed) &&
     (Editorial.Review.parse? "reviewed" == none)
