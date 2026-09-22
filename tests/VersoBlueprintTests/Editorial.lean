@@ -17,21 +17,23 @@ The successor threshold.
 def editorialThreshold (n : Nat) : Nat := n + 1
 ```
 
-:::translation
+:::notation
 The notation {Verso.Genre.Manual.InlineLean.lean}`Nat` retains its Lean hover information.
 :::
 :::meta
 Proof implementation lives in an imported module.
 :::
-:::clarification
+:::interpretation (review := "reviewed EJ 2026-01-01")
 The successor convention is explicit in the preceding definition.
 :::
 :::correction
 A correction annotation explains linked evidence; it does not certify a proof.
 :::
-:::deviation
-The formal statement is for every natural number where the paper has positive ones; it is
-stronger, and nothing is owed.
+:::strengthening
+The formal statement is for every natural number where the paper has positive ones.
+:::
+:::offSurface (location := dependency)
+The resolution theorem is consumed as a proved theorem of another package.
 :::
 :::outOfScope
 An unused variant is omitted; no retained result depends on it.
@@ -46,17 +48,14 @@ The threshold {Verso.Genre.Manual.InlineLean.lean}`editorialThreshold 1`
 was declared in a preceding Lean block.
 :::
 ::::
-::::theorem "editorial.refined"
-A statement with the three refined TODO kinds.
+::::theorem "editorial.owed"
+A statement with the two kinds that owe work.
 
-:::todoProof
-The paper's clause (2) is formalisable with the current definitions; only its proof is missing.
+:::gap (effort := session)
+The paper's clause (2) is missing from the formal statement; stating it is proof work.
 :::
-:::todoFormulation
-The paper's partition of unity needs a Lean formulation before its clause can be stated.
-:::
-:::todoHard
-Whether the paper's hypothesis is redundant is open.
+:::unformalised (missing := statement) (effort := "multi-session")
+The paper's corollary has no formal statement; untried.
 :::
 ::::
 :::::::
@@ -66,55 +65,64 @@ Whether the paper's hypothesis is redundant is open.
 #eval! do
   let html ← renderManualDocHtmlString impls editorialDoc
   pure <| countSubstr html "class=\"bp-editorial\"" == 10 &&
-    hasSubstr html "data-kind=\"translation\"" &&
+    hasSubstr html "data-kind=\"notation\"" &&
     hasSubstr html "data-kind=\"meta\"" &&
-    hasSubstr html "data-kind=\"formalizationTodo\"" &&
-    hasSubstr html "data-kind=\"todoProof\"" &&
-    hasSubstr html "data-kind=\"todoFormulation\"" &&
-    hasSubstr html "data-kind=\"todoHard\"" &&
-    hasSubstr html "data-kind=\"clarification\"" &&
+    hasSubstr html "data-kind=\"interpretation\"" &&
     hasSubstr html "data-kind=\"correction\"" &&
-    hasSubstr html "data-kind=\"deviation\"" &&
-    hasSubstr html "aria-label=\"Clarification\"" &&
-    hasSubstr html "aria-label=\"Correction\"" &&
-    hasSubstr html "aria-label=\"Deviation by choice\"" &&
-    hasSubstr html "aria-label=\"Formalisation TODO: proof work\"" &&
-    hasSubstr html "aria-label=\"Formalisation TODO: formulation\"" &&
-    hasSubstr html "aria-label=\"Formalisation TODO: hard\"" &&
+    hasSubstr html "data-kind=\"strengthening\"" &&
+    hasSubstr html "data-kind=\"offSurface\"" &&
     hasSubstr html "data-kind=\"outOfScope\"" &&
+    hasSubstr html "data-kind=\"formalizationTodo\"" &&
+    hasSubstr html "data-kind=\"gap\"" &&
+    hasSubstr html "data-kind=\"unformalised\"" &&
+    hasSubstr html "aria-label=\"Interpretation\"" &&
+    hasSubstr html "aria-label=\"Correction\"" &&
+    hasSubstr html "aria-label=\"Strengthening\"" &&
+    hasSubstr html "aria-label=\"Off-surface\"" &&
     hasSubstr html "aria-label=\"Out of scope\"" &&
-    hasSubstr html "Formalisation TODO" &&
-    hasSubstr html "class=\"bp-correspondence-warning\"" &&
+    hasSubstr html "aria-label=\"Notation\"" &&
+    hasSubstr html "aria-label=\"Gap\"" &&
+    hasSubstr html "aria-label=\"Unformalised\"" &&
+    countSubstr html "data-review=\"reviewed\"" == 2 &&
+    hasSubstr html "reviewed EJ 2026-01-01" &&
+    countSubstr html "class=\"bp-badge bp-badge-review\"" == 10 &&
+    hasSubstr html "class=\"bp-badge bp-badge-missing\">missing: statement" &&
+    hasSubstr html "class=\"bp-badge bp-badge-location\">dependency" &&
+    hasSubstr html "class=\"bp-badge bp-badge-effort\">session" &&
+    hasSubstr html "class=\"bp-badge bp-badge-effort\">multi-session" &&
+    countSubstr html "class=\"bp-correspondence-warning\"" == 2 &&
     !(hasSubstr html "Formalization gap") &&
-    !(hasSubstr html "A proof-status badge concerns") &&
-    !(hasSubstr html "Unresolved statement discrepancy") &&
     hasSubstr html "data-verso-hover" &&
     !(hasSubstr html "<details class=\"bp-editorial")
 
 /-- info: true -/
 #guard_msgs in
 #eval show IO Bool from do
-  let ext := Editorial.Block.editorial .formalizationTodo
-  let data ← IO.ofExcept (fromJson? (α := Editorial.Kind) ext.data)
+  let mk (kind : String) : Doc.Block Manual :=
+    .other (Editorial.Block.editorial kind "unreviewed" "" "" "") #[]
+  let ext := Editorial.Block.editorial "formalizationTodo" "unreviewed" "" "" ""
+  let data ← IO.ofExcept (fromJson? (α := Editorial.Annotation) ext.data)
   let block : Doc.Block Manual := .other ext #[.para #[.text "Outstanding"]]
-  return data == .formalizationTodo && Editorial.hasFormalizationTodo (.blockquote #[block]) &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .todoProof) #[]) &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .todoFormulation) #[]) &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .todoHard) #[]) &&
-    !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .translation) #[]) &&
-    !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .clarification) #[]) &&
-    !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .correction) #[]) &&
-    !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .deviation) #[]) &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .correction) #[block]) &&
-    !Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .outOfScope) #[]) &&
-    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial .outOfScope) #[block])
+  return data.kind == .formalizationTodo && Editorial.hasFormalizationTodo (.blockquote #[block]) &&
+    Editorial.hasFormalizationTodo (mk "gap") &&
+    Editorial.hasFormalizationTodo (mk "unformalised") &&
+    !Editorial.hasFormalizationTodo (mk "notation") &&
+    !Editorial.hasFormalizationTodo (mk "interpretation") &&
+    !Editorial.hasFormalizationTodo (mk "correction") &&
+    !Editorial.hasFormalizationTodo (mk "strengthening") &&
+    !Editorial.hasFormalizationTodo (mk "offSurface") &&
+    !Editorial.hasFormalizationTodo (mk "outOfScope") &&
+    Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial "correction" "unreviewed" "" "" "") #[block]) &&
+    (Editorial.Review.parse? "reviewed BS 2026-09-22" == some (.reviewed "BS" "2026-09-22")) &&
+    (Editorial.Review.parse? "unreviewed" == some .unreviewed) &&
+    (Editorial.Review.parse? "reviewed" == none)
 
 set_option verso.blueprint.foldProofBlocks true
 #docs (Manual) omittedProofDoc "Statement with omitted proof" :=
 :::::::
 ::::theorem "editorial.omitted.fixture"
 A faithful statement whose proof is deliberately omitted.
-:::clarification
+:::interpretation
 The mathematical convention is explicit in the statement.
 :::
 :::outOfScope
@@ -131,7 +139,7 @@ Proof omitted.
 #eval! do
   let html ← renderManualDocHtmlString impls omittedProofDoc
   pure <| !(hasSubstr html "class=\"bp-correspondence-warning\"") &&
-    hasSubstr html "data-kind=\"clarification\"" &&
+    hasSubstr html "data-kind=\"interpretation\"" &&
     hasSubstr html "<details class=\"bp_wrapper bp_kind_proof_wrapper"
 
 #docs (Manual) proofGapDoc "Proof gap" :=
@@ -140,7 +148,7 @@ Proof omitted.
 Statement whose proof note reveals an outstanding correspondence obligation.
 :::
 ::::proof "editorial.proof.fixture"
-:::todoProof
+:::gap
 An equivalence is still missing.
 :::
 ::::
