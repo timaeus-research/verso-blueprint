@@ -22,15 +22,12 @@ so the kinds are mutually exclusive and each annotation carries exactly one; one
 
 **For an item with a counterpart of record: is the paper's claim true as printed?**
 
-- `:::missingHypothesis` renders **Missing hypothesis**. The printed statement needs a
-  hypothesis it does not print (without it the claim is false or not well-formed); the
-  formalisation states it with the hypothesis added. An added hypothesis that only the
-  formal proof needs, while the paper's claim may hold without it, is a `gap`, not a missing
-  hypothesis.
-- `:::correction` renders **Correction**. False for another reason (a wrong sign, factor or
-  normalisation, an inconsistent display); the formalisation states the corrected version,
-  and the body gives the reason. The label itself supplies no evidence and does not certify
-  the linked proofs.
+- `:::correction` renders **Correction**. False as printed (a wrong sign, factor or
+  normalisation, an inconsistent display, or a hypothesis the claim needs and the paper does
+  not print); the formalisation states the corrected version, and the body gives the reason.
+  An added hypothesis that only the formal proof needs, while the paper's claim may hold
+  without it, is a `gap`, not a correction. The label itself supplies no evidence and does not
+  certify the linked proofs.
 - `:::interpretation` renders **Interpretation**. Underspecified; the formalisation fixes one
   reading, and the body names the alternatives and why this one.
 
@@ -91,14 +88,14 @@ deliberately have a sorried proof: missing proofs alone use the existing proof s
 statement written without proof that the document counts as missing is `unformalised` with
 `missing := proof`. A substantive change of assumptions or conclusions is a `gap`, a
 `strengthening` or a `restatement`, never a `translation` or an `interpretation` merely because
-an author chose it; an assertion that the paper is false is a `missingHypothesis` or a
-`correction` and needs its reason in the body. Annotations cannot serve as evidence that the
+an author chose it; an assertion that the paper is false is a `correction` and needs its
+reason in the body. Annotations cannot serve as evidence that the
 formalisation corresponds to the paper.
 
 Implementation: `src/VersoBlueprint/Editorial.lean`. The theorem/definition renderer detects
 nested owing annotations from the Verso document tree, not from rendered HTML. CSS hooks are
 `.bp-editorial` with
-`data-kind="meta|formalizationTodo|unformalised|outOfScope|missingHypothesis|correction|interpretation|translation|restatement|strengthening|gap"`
+`data-kind="meta|formalizationTodo|unformalised|outOfScope|correction|interpretation|translation|restatement|strengthening|gap"`
 and `data-review="unreviewed|reviewed"`, `.bp-editorial-title`, `.bp-editorial-kind`,
 `.bp-editorial-content`, the badges `.bp-badge.bp-badge-review[data-review=…]` and
 `.bp-badge-missing`, and `.bp-correspondence-warning`.

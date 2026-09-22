@@ -29,9 +29,6 @@ The successor convention is explicit in the preceding definition.
 :::correction
 A correction annotation explains linked evidence; it does not certify a proof.
 :::
-:::missingHypothesis
-The paper's statement needs the threshold to be positive; the formal statement adds it.
-:::
 :::strengthening
 The formal statement is for every natural number where the paper has positive ones.
 :::
@@ -67,13 +64,11 @@ The paper's corollary has no formal statement; untried.
 #guard_msgs in
 #eval! do
   let html ← renderManualDocHtmlString impls editorialDoc
-  pure <| countSubstr html "class=\"bp-editorial\"" == 11 &&
+  pure <| countSubstr html "class=\"bp-editorial\"" == 10 &&
     hasSubstr html "data-kind=\"translation\"" &&
     hasSubstr html "data-kind=\"meta\"" &&
     hasSubstr html "data-kind=\"interpretation\"" &&
     hasSubstr html "data-kind=\"correction\"" &&
-    hasSubstr html "data-kind=\"missingHypothesis\"" &&
-    hasSubstr html "aria-label=\"Missing hypothesis\"" &&
     hasSubstr html "data-kind=\"strengthening\"" &&
     hasSubstr html "data-kind=\"restatement\"" &&
     hasSubstr html "data-kind=\"outOfScope\"" &&
@@ -90,7 +85,7 @@ The paper's corollary has no formal statement; untried.
     hasSubstr html "aria-label=\"Unformalised\"" &&
     countSubstr html "data-review=\"reviewed\"" == 2 &&
     hasSubstr html "reviewed EJ 2026-01-01" &&
-    countSubstr html "class=\"bp-badge bp-badge-review\"" == 11 &&
+    countSubstr html "class=\"bp-badge bp-badge-review\"" == 10 &&
     hasSubstr html "class=\"bp-badge bp-badge-missing\">missing: statement" &&
     countSubstr html "class=\"bp-correspondence-warning\"" == 2 &&
     !(hasSubstr html "Formalization gap") &&
@@ -112,7 +107,6 @@ The paper's corollary has no formal statement; untried.
     !Editorial.hasFormalizationTodo (mk "restatement") &&
     !Editorial.hasFormalizationTodo (mk "interpretation") &&
     !Editorial.hasFormalizationTodo (mk "correction") &&
-    !Editorial.hasFormalizationTodo (mk "missingHypothesis") &&
     !Editorial.hasFormalizationTodo (mk "strengthening") &&
     !Editorial.hasFormalizationTodo (mk "outOfScope") &&
     Editorial.hasFormalizationTodo (.other (Editorial.Block.editorial "correction" "unreviewed" "") #[block]) &&

@@ -11,10 +11,9 @@ namespace Informal.Editorial
 An annotation compares one item of the paper with the formalisation. Three questions decide its
 kind, in order. Does the item have a formalised counterpart? If none: `unformalised` (with
 `missing := statement | proof`) or `outOfScope` (none and none owed, by decision). For an item
-with a counterpart of record, is the paper's claim true as printed? `missingHypothesis` (it needs
-a hypothesis it does not print; the formalisation adds it), `correction` (false for another
-reason; the corrected version is stated) or `interpretation` (underspecified; one reading is
-fixed). For a true claim, how do the statements compare? `restatement` (a logically equivalent
+with a counterpart of record, is the paper's claim true as printed? `correction` (false, an
+unprinted hypothesis it needs included; the corrected version is stated) or `interpretation`
+(underspecified; one reading is fixed). For a true claim, how do the statements compare? `restatement` (a logically equivalent
 form of the whole statement, used sparingly), `strengthening` (the formal statement implies the
 paper's, converse not claimed) or `gap` (weaker or incomparable). `translation` is the dictionary
 (this Lean expression is the paper's such-and-such), orthogonal to the comparison. `meta` and
@@ -24,7 +23,6 @@ inductive Kind where
   | formalizationTodo
   | unformalised
   | outOfScope
-  | missingHypothesis
   | correction
   | interpretation
   | translation
@@ -38,7 +36,6 @@ def Kind.key : Kind → String
   | .formalizationTodo => "formalizationTodo"
   | .unformalised => "unformalised"
   | .outOfScope => "outOfScope"
-  | .missingHypothesis => "missingHypothesis"
   | .correction => "correction"
   | .interpretation => "interpretation"
   | .translation => "translation"
@@ -51,7 +48,6 @@ def Kind.ofKey? : String → Option Kind
   | "formalizationTodo" => some .formalizationTodo
   | "unformalised" => some .unformalised
   | "outOfScope" => some .outOfScope
-  | "missingHypothesis" => some .missingHypothesis
   | "correction" => some .correction
   | "interpretation" => some .interpretation
   | "translation" => some .translation
@@ -65,7 +61,6 @@ def Kind.title : Kind → String
   | .formalizationTodo => "Formalisation TODO"
   | .unformalised => "Unformalised"
   | .outOfScope => "Out of scope"
-  | .missingHypothesis => "Missing hypothesis"
   | .correction => "Correction"
   | .interpretation => "Interpretation"
   | .translation => "Translation"
@@ -144,8 +139,6 @@ def css : String := r##"
 .bp-editorial[data-kind=formalizationTodo] > .bp-editorial-title, .bp-editorial[data-kind=gap] > .bp-editorial-title { color:light-dark(#9a3412,#fdba74); }
 .bp-editorial[data-kind=unformalised] { border-left:4px solid #b91c1c; background:light-dark(#fef2f2,#2a1414); }
 .bp-editorial[data-kind=unformalised] > .bp-editorial-title { color:light-dark(#991b1b,#fca5a5); }
-.bp-editorial[data-kind=missingHypothesis] { border-left-color:light-dark(#be185d,#f9a8d4); }
-.bp-editorial[data-kind=missingHypothesis] > .bp-editorial-title { color:light-dark(#9d174d,#fbcfe8); }
 .bp-editorial[data-kind=correction] { border-left-color:light-dark(#7e22ce,#d8b4fe); }
 .bp-editorial[data-kind=correction] > .bp-editorial-title { color:light-dark(#6b21a8,#e9d5ff); }
 .bp-editorial[data-kind=interpretation] { border-left-color:light-dark(#0369a1,#7dd3fc); }
@@ -280,14 +273,9 @@ and why, and what would settle it. -/
 decision. Explain what is excluded and why; this does not discharge any mathematical obligation. -/
 @[directive] def outOfScope : DirectiveExpanderOf Editorial.Config := Editorial.expand .outOfScope
 
-/-- The paper's printed statement needs a hypothesis it does not print (without it the claim is
-false or not well-formed); the formalisation states it with the hypothesis added. -/
-@[directive] def missingHypothesis : DirectiveExpanderOf Editorial.Config :=
-  Editorial.expand .missingHypothesis
-
-/-- The paper's claim is false as printed for a reason other than a missing hypothesis (a wrong
-sign, factor or normalisation, an inconsistent display); the formalisation states the corrected
-version, with the reason. The label itself supplies no evidence. -/
+/-- The paper's claim is false as printed (a wrong sign, factor or normalisation, an inconsistent
+display, or a hypothesis the claim needs and the paper does not print); the formalisation states
+the corrected version, with the reason. The label itself supplies no evidence. -/
 @[directive] def correction : DirectiveExpanderOf Editorial.Config := Editorial.expand .correction
 
 /-- The paper's claim is underspecified; the formalisation fixes one reading and names the
