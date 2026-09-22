@@ -60,9 +60,9 @@ carry no information; the body of an owing item says what would close it, not wh
 cost. Values are written as identifiers or as strings (`(missing := statement)`,
 `(review := "reviewed BS 2026-09-22")`); a value with a space must be a string.
 
-`unformalised` and `gap` owe work: a node containing one shows the warning “Formalisation
-TODO” in its header (as does the framework's older `:::formalizationTodo`), and a proof block
-containing one is not folded. The other kinds owe nothing. `:::meta` (**Formalisation note**)
+`unformalised` and `gap` owe work: a node containing one shows the badge “Owes work” in its
+header (as does the framework's older `:::formalizationTodo`), and a proof block containing one
+is not folded. The other kinds owe nothing. `:::meta` (**Formalisation note**)
 remains available for implementation commentary.
 
 Put a note concerning a particular theorem or definition inside that node:
@@ -98,4 +98,7 @@ nested owing annotations from the Verso document tree, not from rendered HTML. C
 `data-kind="meta|formalizationTodo|unformalised|outOfScope|correction|interpretation|translation|restatement|strengthening|gap"`
 and `data-review="unreviewed|reviewed"`, `.bp-editorial-title`, `.bp-editorial-kind`,
 `.bp-editorial-content`, the badges `.bp-badge.bp-badge-review[data-review=…]` and
-`.bp-badge-missing`, and `.bp-correspondence-warning`.
+`.bp-badge-missing`, and the header badge `.bp-correspondence-warning`. One design: a 3px left
+rule and the Title-case kind title in the kind's hue (set by the custom property `--bp-kind`),
+warm hues only for the kinds that owe work, the body in the page colour, lowercase badges in one
+style, every colour a `light-dark()` pair.

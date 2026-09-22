@@ -168,4 +168,4 @@ An equivalence is still missing.
   let data := restored.blockData
   return data.hasFormalizationTodo &&
     hasSubstr (renderInformalBlockHtml data (.forBlock data "1") #[]).asString
-      "Formalisation TODO"
+      "Owes work"

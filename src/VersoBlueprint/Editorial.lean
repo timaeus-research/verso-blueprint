@@ -122,36 +122,37 @@ def Annotation.ofStrings (kindKey review missing : String) : Annotation :=
     review := (Review.parse? review).getD .unreviewed
     missing := Missing.parse? missing }
 
+/-- The node-header badge of a node containing an annotation that owes work. -/
 def correspondenceWarning : Output.Html :=
   .tag "span" #[("class", "bp-correspondence-warning")]
-    (.text true "Formalisation TODO")
+    (.text true "Owes work")
 
 def css : String := r##"
-.bp-editorial { margin:1rem 0; padding:.7rem 1rem; border-left:3px solid var(--bp-color-border-soft,#cbd5e1); background:var(--bp-color-bg-subtle,#f8fafc); font-style:normal; }
-.bp-editorial-title { font-weight:650; font-size:.9rem; margin-bottom:.4rem; display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; }
+/* One design for every annotation: a 3px left rule and a Title-case kind title in the kind's hue,
+   the body in the page colour, lowercase badges in one style. Warm hues only for the kinds that
+   owe work. Every colour is light-dark(). */
+.bp-editorial { margin:1rem 0; padding:.7rem 1rem; border-left:3px solid light-dark(#64748b,#94a3b8); background:light-dark(#f8fafc,#111827); font-style:normal; --bp-kind:light-dark(#64748b,#94a3b8); border-left-color:var(--bp-kind); }
+.bp-editorial + .bp-editorial { margin-top:1rem; }
+.bp-editorial-title { display:flex; flex-wrap:wrap; align-items:center; gap:.5rem; margin-bottom:.4rem; font-size:.9rem; font-weight:650; line-height:1.4; color:var(--bp-kind); text-transform:none; letter-spacing:0; }
+.bp-editorial-kind { font-size:inherit; font-weight:inherit; }
 .bp-editorial-content > :first-child { margin-top:0; }
 .bp-editorial-content > :last-child { margin-bottom:0; }
-.bp-badge { display:inline-block; font-size:.7rem; font-weight:600; line-height:1.3; padding:.05rem .45rem; border-radius:.7rem; border:1px solid transparent; letter-spacing:.01em; }
+.bp-badge, .bp-correspondence-warning { display:inline-block; font-size:.7rem; font-weight:600; line-height:1.4; padding:.05rem .5rem; border-radius:.7rem; border:1px solid transparent; text-transform:none; letter-spacing:.01em; vertical-align:middle; }
 .bp-badge-review[data-review=unreviewed] { color:light-dark(#475569,#cbd5e1); background:light-dark(#e2e8f0,#334155); }
 .bp-badge-review[data-review=reviewed] { color:light-dark(#166534,#bbf7d0); background:light-dark(#dcfce7,#14532d); }
 .bp-badge-missing { color:light-dark(#991b1b,#fecaca); background:light-dark(#fee2e2,#450a0a); }
-.bp-editorial[data-kind=formalizationTodo], .bp-editorial[data-kind=gap] { border-left:4px solid #b45309; background:light-dark(#fff7ed,#302015); }
-.bp-editorial[data-kind=formalizationTodo] > .bp-editorial-title, .bp-editorial[data-kind=gap] > .bp-editorial-title { color:light-dark(#9a3412,#fdba74); }
-.bp-editorial[data-kind=unformalised] { border-left:4px solid #b91c1c; background:light-dark(#fef2f2,#2a1414); }
-.bp-editorial[data-kind=unformalised] > .bp-editorial-title { color:light-dark(#991b1b,#fca5a5); }
-.bp-editorial[data-kind=correction] { border-left-color:light-dark(#7e22ce,#d8b4fe); }
-.bp-editorial[data-kind=correction] > .bp-editorial-title { color:light-dark(#6b21a8,#e9d5ff); }
-.bp-editorial[data-kind=interpretation] { border-left-color:light-dark(#0369a1,#7dd3fc); }
-.bp-editorial[data-kind=interpretation] > .bp-editorial-title { color:light-dark(#075985,#bae6fd); }
-.bp-editorial[data-kind=translation] { margin:.5rem 0; padding:.35rem .8rem; border-left-color:light-dark(#64748b,#94a3b8); background:transparent; border-top:1px dotted light-dark(#cbd5e1,#475569); border-bottom:1px dotted light-dark(#cbd5e1,#475569); }
-.bp-editorial[data-kind=translation] > .bp-editorial-title { font-size:.75rem; margin-bottom:.1rem; color:light-dark(#475569,#cbd5e1); text-transform:uppercase; letter-spacing:.04em; }
-.bp-editorial[data-kind=translation] > .bp-editorial-content { font-size:.95em; }
-.bp-editorial[data-kind=restatement] { border-left-color:light-dark(#4d7c0f,#bef264); }
-.bp-editorial[data-kind=restatement] > .bp-editorial-title { color:light-dark(#3f6212,#d9f99d); }
-.bp-editorial[data-kind=strengthening] { border-left-color:light-dark(#15803d,#86efac); }
-.bp-editorial[data-kind=strengthening] > .bp-editorial-title { color:light-dark(#166534,#bbf7d0); }
+.bp-correspondence-warning { color:light-dark(#9a3412,#fdba74); background:light-dark(#ffedd5,#431407); }
+.bp-editorial[data-kind=gap], .bp-editorial[data-kind=formalizationTodo] { --bp-kind:light-dark(#c2410c,#fdba74); }
+.bp-editorial[data-kind=unformalised] { --bp-kind:light-dark(#b91c1c,#fca5a5); }
+.bp-editorial[data-kind=correction] { --bp-kind:light-dark(#7e22ce,#d8b4fe); }
+.bp-editorial[data-kind=interpretation] { --bp-kind:light-dark(#0369a1,#7dd3fc); }
+.bp-editorial[data-kind=restatement] { --bp-kind:light-dark(#4d7c0f,#bef264); }
+.bp-editorial[data-kind=strengthening] { --bp-kind:light-dark(#15803d,#86efac); }
+.bp-editorial[data-kind=translation], .bp-editorial[data-kind=outOfScope], .bp-editorial[data-kind=meta] { --bp-kind:light-dark(#64748b,#94a3b8); }
 .bp-editorial[data-kind=outOfScope] { border-left-style:dashed; }
-.bp-correspondence-warning { font-size:.8rem; font-weight:600; color:light-dark(#9a3412,#fdba74); }
+.bp-editorial[data-kind=translation] { margin:.5rem 0; padding:.35rem 1rem; background:transparent; }
+.bp-editorial[data-kind=translation] + .bp-editorial[data-kind=translation] { margin-top:.5rem; }
+.bp-editorial[data-kind=translation] > .bp-editorial-title { margin-bottom:.15rem; }
 "##
 
 def badge (cls text : String) (extra : Array (String × String) := #[]) : Output.Html :=
