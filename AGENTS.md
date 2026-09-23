@@ -2,11 +2,14 @@
 
 ## Timaeus fork
 
-This is a vendored package inside the anchors repository, not a standalone
-Git repository. Edit it directly alongside the anchor documents and commit
-everything in the anchors repository. Do not create package worktrees or
-push to a separate fork. The standalone worktree, branch, and PR policies
-below apply only to upstream development. See `../../docs/blueprint-fork.md`.
+This repository is the Timaeus fork of `leanprover/verso-blueprint`, developed
+on the branch `timaeus/v4.33.1` (toolchain `leanprover/lean4:v4.33.1`).
+Consumers such as `timaeus-research/greybook` pin a commit of that branch.
+From 9 to 22 September 2026 the package was vendored inside
+`timaeus-research/anchors` (`vendor/verso-blueprint`); that copy is an archive
+and every change now lands here. `TIMAEUS.md` records the provenance, the
+Timaeus additions and how to sync with upstream. The worktree, branch and PR
+policies below are upstream's and apply when contributing upstream.
 
 ## Scope
 

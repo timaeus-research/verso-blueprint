@@ -53,7 +53,7 @@ def encode (text : String) : String := Id.run do
 
 def issueUrl (ctx : Context) (name target : String) (details : String := "") : String :=
   let source := if ctx.sourcePin.isEmpty then "" else s!"\nSource rev: {ctx.sourcePin}"
-  let description := s!"Node: {target}\n{details}{source}\nAnchors: timaeus-research/anchors@{ctx.commit}\n"
+  let description := s!"Node: {target}\n{details}{source}\nBlueprint rev: {ctx.commit}\n"
   "https://linear.app/resolution-org/team/ENG/new?project=b1543c40-1fd7-4627-b0e2-37bcb5930043" ++
     "&title=" ++ encode s!"{ctx.codename}/{name}: " ++ "&description=" ++ encode description
 
