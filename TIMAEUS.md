@@ -31,8 +31,10 @@ happens here, on the branch `timaeus/v4.33.1`; consumers pin a commit of that br
   (`verso.blueprint.externalCode.showUniverses`).
 - Two patches to the pinned `verso` (`patches/verso-chapter-anchors.patch`,
   `patches/verso-term-universes.patch`), applied to a consumer's `.lake/packages/verso` by
-  `scripts/apply-verso-patches.py <path-to-verso>` (idempotent, hash-checked). Run it once after
-  `lake update` in a consuming project.
+  `scripts/apply-verso-patches.py <path-to-verso>` (idempotent, hash-checked). A consuming
+  project needs it only if its documents put tags on page-level parts or embed native Lean
+  `leanTerm` blocks (the anchor documents do; the greybook blueprint does not). Both fixes are
+  candidates for upstream `leanprover/verso`.
 
 ## Consuming
 
