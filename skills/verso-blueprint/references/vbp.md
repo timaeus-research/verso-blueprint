@@ -60,6 +60,12 @@ The explicit `:olean` facet is important for Mathlib consumers: Lake's default
 `leanArts` facet also emits C and can otherwise trigger an unintended native
 dependency rebuild.
 
+`vbp build` runs the last two commands with Lake's `--log-level=error`: each
+Lake run replays the stored warnings of every module it imports, so the
+warnings printed by the package build would otherwise appear three times.
+Errors, and the generator file's own messages, are still shown; warnings of a
+module that the generator imports and the Blueprint library does not are not.
+
 `build --verbose` passes `--verbose` through to the generator run, enabling Blueprint generation phase progress after the Lake package build completes.
 Pass `--pdf` to build `_out/site/pdf/main.pdf` from the generated TeX output.
 `--pdf-engine <cmd>` and `--pdf-runs <n>` are forwarded to the generator when

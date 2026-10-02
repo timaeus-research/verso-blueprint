@@ -87,8 +87,11 @@ attributes, the values a ledger entry needs.
 
 A bullet without a label, or with a label other than the four (including `**Translation**.`), is
 reported as a warning at the node when the chapter is elaborated, once for each node, declaration
-and distinct problem, and stays in the plain docstring display under the heading. Nodes made
-with the `@[blueprint]` attribute show the docstring unchanged and no boxes. The hand-written directives keep working as before.
+and distinct problem, and stays in the plain docstring display under the heading. `lake exe vbp
+build` prints a chapter's warnings once: its two generator stages run Lake with
+`--log-level=error`, so they do not replay the warnings that its first stage, the package build,
+has printed. Nodes made with the `@[blueprint]` attribute show the docstring unchanged and no
+boxes. The hand-written directives keep working as before.
 
 ### Review ledger
 

@@ -360,6 +360,16 @@ private partial def runBuildStages : List BuildStage → IO UInt32
         pure code
 
 /--
+Lake options for the two generator stages of `vbp build`. Each stage is a separate Lake run that
+replays the stored messages of every module the generator imports, so without them each warning of
+a chapter (an unknown label in a docstring, say) is printed three times. The first stage, the
+package OLean build, prints them; the generator stages print errors only (and the generator file's
+own messages, which Lean prints, not Lake). Warnings of a module that the generator imports and
+the package root does not are not shown by `vbp build`.
+-/
+def replayQuietArgs : Array String := #["--log-level=error"]
+
+/--
 Run a generator through Lake's Lean wrapper.
 
 The raw environment-wrapped Lean interpreter form does not load package native
@@ -368,7 +378,7 @@ does, while still using the package environment that the entry point needs.
 -/
 private def generatorRunArgs (generatorFile output : FilePath) (verbose : Bool) : Array String :=
   let args :=
-    #["lean", generatorFile.toString, "--", "--run", generatorFile.toString,
+    replayQuietArgs ++ #["lean", generatorFile.toString, "--", "--run", generatorFile.toString,
       "--output", output.toString]
   if verbose then
     args ++ #["--verbose"]
@@ -391,7 +401,7 @@ private def buildPlan (opts : BuildOptions) : IO (Except String BuildPlan) := do
   | .ok info =>
       pure (.ok {
         packageOLeanTarget := packageOLeanTarget info.packageName,
-        generatorPrepareArgs := #["lean", info.generatorFile.toString],
+        generatorPrepareArgs := replayQuietArgs ++ #["lean", info.generatorFile.toString],
         generatorArgs := generatorRunArgs info.generatorFile opts.output opts.verbose ++
           pdfGeneratorArgs opts ++
           (if opts.hideReview then #[Informal.ReviewLedger.hideReviewFlag] else #[])
