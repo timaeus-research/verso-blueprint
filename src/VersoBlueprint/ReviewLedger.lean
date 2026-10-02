@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 -/
 
 import Lean
+import VersoBlueprint.SourceRelation
 
 /-!
 # The review ledger
@@ -16,8 +17,9 @@ in a JSON file: an array of entries
  "reviewer": "BS", "date": "2026-10-02"}
 ```
 
-where `kind` is one of `Translation`, `Interpretation`, `Correction`, `Formalisation note` and
-`hash` is `Informal.SourceRelation.itemHash` of the item's text. The items of one declaration and
+where `kind` is the label of the item (`Informal.SourceRelation.Label.text`: `Translation`,
+`Unformalised`, `Out of scope`, `Correction`, `Interpretation`, `Restatement`, `Strengthening`,
+`Gap` or `Formalisation note`) and `hash` is `Informal.SourceRelation.itemHash` of the item's text. The items of one declaration and
 one kind are compared with the ledger together (`status`):
 
 * an item is *reviewed* when an entry with its declaration, kind and hash exists (the badge names
@@ -59,7 +61,7 @@ structure Entry where
 deriving Repr, Inhabited, BEq, FromJson, ToJson
 
 /-- The kinds a ledger entry may name. -/
-def kinds : List String := ["Translation", "Interpretation", "Correction", "Formalisation note"]
+def kinds : List String := SourceRelation.Label.all.map (·.text)
 
 private def isLowerHex (c : Char) : Bool := c.isDigit || ('a' ≤ c && c ≤ 'f')
 

@@ -16,7 +16,7 @@ Relation to the source.
 * **Translation.** `S.weakTransformSeq J i` is Hironaka's $J_i$, and `S.boundarySeq E₀ i` his $E_i$.
 * **Interpretation.** Hironaka's "non-singular" is read as smooth over `k`; ...
 * **Correction.** ...
-* **Formalisation note.** ...
+* **Gap.** ...
 ```
 
 This module parses that section (no Verso, no IO): the blueprint renders each item as an annotation
@@ -33,12 +33,14 @@ Parsing rules:
   inside an item separate paragraphs.
 * The section ends before the first non-blank line that is neither a bullet nor a continuation
   (and before the blank lines preceding it), or at the end of the docstring.
-* Each item begins with exactly one of the bold labels `**Translation.**`,
-  `**Interpretation.**`, `**Correction.**`, `**Formalisation note.**` (the period inside the bold).
-  The item's text is everything after the label, continuation lines included; it is Markdown
-  (inline code, emphasis, inline LaTeX `$...$`).
-* A bullet without a bold label, or with a bold label that is not one of the four, is a problem:
-  it is reported and stays in the plain docstring display, under the heading.
+* Each item begins with exactly one of the bold labels `**Translation.**`, `**Unformalised.**`,
+  `**Out of scope.**`, `**Correction.**`, `**Interpretation.**`, `**Restatement.**`,
+  `**Strengthening.**`, `**Gap.**`, `**Formalisation note.**` (the period inside the bold). The
+  item's text is everything after the label, continuation lines included; it is Markdown (inline
+  code, emphasis, inline LaTeX `$...$`). Each label renders as the annotation kind of the same
+  name (`Informal.Editorial.Kind`; a formalisation note as `meta`).
+* A bullet without a bold label, or with a bold label that is not one of these, is a problem: it
+  is reported and stays in the plain docstring display, under the heading.
 -/
 
 namespace Informal.SourceRelation
@@ -46,29 +48,49 @@ namespace Informal.SourceRelation
 /-- The heading line of the section. -/
 def heading : String := "Relation to the source."
 
-/-- The four labels of an item. -/
+/-- The labels of an item: the kinds of `Informal.Editorial.Kind` that a docstring can name, chosen
+by the questions documented there (`formalisationNote` is the fallback `meta`). -/
 inductive Label where
   | translation
-  | interpretation
+  | unformalised
+  | outOfScope
   | correction
+  | interpretation
+  | restatement
+  | strengthening
+  | gap
   | formalisationNote
 deriving BEq, Repr, Inhabited, DecidableEq
 
 /-- The label as written between the bold markers, without its period; also the ledger's `kind`. -/
 def Label.text : Label → String
   | .translation => "Translation"
-  | .interpretation => "Interpretation"
+  | .unformalised => "Unformalised"
+  | .outOfScope => "Out of scope"
   | .correction => "Correction"
+  | .interpretation => "Interpretation"
+  | .restatement => "Restatement"
+  | .strengthening => "Strengthening"
+  | .gap => "Gap"
   | .formalisationNote => "Formalisation note"
 
 /-- The key of the blueprint annotation kind that renders this label (`Informal.Editorial.Kind.key`). -/
 def Label.kindKey : Label → String
   | .translation => "translation"
-  | .interpretation => "interpretation"
+  | .unformalised => "unformalised"
+  | .outOfScope => "outOfScope"
   | .correction => "correction"
+  | .interpretation => "interpretation"
+  | .restatement => "restatement"
+  | .strengthening => "strengthening"
+  | .gap => "gap"
   | .formalisationNote => "meta"
 
-def Label.all : List Label := [.translation, .interpretation, .correction, .formalisationNote]
+/-- Every label: the dictionary, then the kinds in the order of the three questions, then the
+fallback. -/
+def Label.all : List Label :=
+  [.translation, .unformalised, .outOfScope, .correction, .interpretation, .restatement,
+    .strengthening, .gap, .formalisationNote]
 
 def Label.ofText? (text : String) : Option Label :=
   Label.all.find? (·.text == text)
@@ -85,20 +107,23 @@ deriving Repr, Inhabited, BEq
 inductive Problem where
   /-- The bullet does not start with a bold label. -/
   | unlabelled (bullet : String)
-  /-- The bullet starts with a bold label that is not one of the four (the text between the bold
+  /-- The bullet starts with a bold label that is not one of `Label.all` (the text between the bold
   markers is given). -/
   | unknownLabel (label : String) (bullet : String)
   /-- The heading is not followed by a list of bullets. -/
   | noItems
 deriving Repr, Inhabited, BEq
 
+/-- The labels as written, for messages: `**Translation.**, ..., **Gap.** or **Formalisation note.**`. -/
+def labelList : String :=
+  let written := Label.all.map (s!"**{·.text}.**")
+  ", ".intercalate written.dropLast ++ " or " ++ written.getLast!
+
 def Problem.message : Problem → String
   | .unlabelled bullet =>
-    s!"a bullet of the \"{heading}\" section has no label (expected **Translation.**, " ++
-      s!"**Interpretation.**, **Correction.** or **Formalisation note.**): {bullet}"
+    s!"a bullet of the \"{heading}\" section has no label (expected {labelList}): {bullet}"
   | .unknownLabel label bullet =>
-    s!"unknown label **{label}** in the \"{heading}\" section (expected **Translation.**, " ++
-      s!"**Interpretation.**, **Correction.** or **Formalisation note.**): {bullet}"
+    s!"unknown label **{label}** in the \"{heading}\" section (expected {labelList}): {bullet}"
   | .noItems =>
     s!"the \"{heading}\" heading is not followed by a list of labelled bullets"
 

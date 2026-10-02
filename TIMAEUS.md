@@ -52,8 +52,7 @@ Relation to the source.
 * **Translation.** `S.weakTransformSeq J i` is Hironaka's $J_i$, and `S.boundarySeq E₀ i` his $E_i$.
 * **Interpretation.** Hironaka's "non-singular" is read as smooth over `k`; for a scheme of finite
   type over the perfect field `k` the two agree.
-* **Correction.** ...
-* **Formalisation note.** ...
+* **Gap.** The source's theorem holds over any local ring of its class; here the base is a field.
 ```
 
 - The heading is the first line whose text, without surrounding whitespace, is exactly
@@ -63,15 +62,23 @@ Relation to the source.
 - An item continues on the following lines indented more than its bullet; a blank line inside an
   item separates paragraphs. The section ends before the first non-blank line that is neither a
   bullet nor a continuation, or at the end of the docstring.
-- Each item begins with exactly one of the bold labels `**Translation.**`, `**Interpretation.**`,
-  `**Correction.**`, `**Formalisation note.**`, the period inside the bold. The item's text is
-  everything after the label; it is Markdown with inline code, emphasis and inline LaTeX
-  `$...$` (`$$...$$` for display math).
-- Kinds: a *translation* is a dictionary entry (this Lean expression is the source's
-  such-and-such); an *interpretation* fixes one reading of the source's wording; a *correction*
-  is a hypothesis the printed statement needs; a *formalisation note* is a difference in the form
-  of the statement, with the reason. They render as the `translation`, `interpretation`,
-  `correction` and `meta` directives do.
+- Each item begins with exactly one of the bold labels `**Translation.**`, `**Unformalised.**`,
+  `**Out of scope.**`, `**Correction.**`, `**Interpretation.**`, `**Restatement.**`,
+  `**Strengthening.**`, `**Gap.**`, `**Formalisation note.**`, the period inside the bold. The
+  item's text is everything after the label; it is Markdown with inline code, emphasis and inline
+  LaTeX `$...$` (`$$...$$` for display math).
+- Kinds: the editorial kinds of `src/VersoBlueprint/Editorial.lean`, chosen by its three
+  questions. Does the source's item have a formalised counterpart? If not, *Unformalised* (a
+  statement or proof is missing) or *Out of scope* (none owed, by decision). Is the source's claim
+  true as printed? If not, *Correction* (false; the needed hypothesis is added and the corrected
+  version stated); if underspecified, *Interpretation* (one reading is fixed). For a true claim,
+  how do the statements compare? *Restatement* (a logically equivalent form, used sparingly),
+  *Strengthening* (the formal statement implies the source's) or *Gap* (weaker or incomparable).
+  A *Translation* is a dictionary entry (this Lean expression is the source's such-and-such),
+  orthogonal to the three questions; a *Formalisation note* is the fallback for a remark that is
+  none of these. Each label renders as the directive of the same name does (a formalisation note
+  as `meta`), and an *Unformalised* or *Gap* item, like those directives, marks its node's header
+  "Owes work". An *Unformalised* item from a docstring carries no `missing` badge.
 
 ### Rendering
 
@@ -85,7 +92,7 @@ LaTeX math spans (CommonMark, no raw HTML) and converted to Verso blocks by Vers
 document. Inline code is plain code (not elaborated). Each box carries `data-decl` and `data-hash`
 attributes, the values a ledger entry needs.
 
-A bullet without a label, or with a label other than the four (including `**Translation**.`), is
+A bullet without a label, or with a label other than these (including `**Translation**.`), is
 reported as a warning at the node when the chapter is elaborated, once for each node, declaration
 and distinct problem, and stays in the plain docstring display under the heading. `lake exe vbp
 build` prints a chapter's warnings once: its two generator stages run Lake with
@@ -102,8 +109,9 @@ Review status is not written in docstrings. The ledger is a JSON array of entrie
   "kind": "Translation", "hash": "d78b9d85c3d102a0", "reviewer": "BS", "date": "2026-10-02"}]
 ```
 
-`decl` is the declaration's full name, `kind` one of `Translation`, `Interpretation`,
-`Correction`, `Formalisation note`, `hash` the item hash (16 lowercase hexadecimal digits) and
+`decl` is the declaration's full name, `kind` the item's label without its period
+(`Translation`, `Unformalised`, `Out of scope`, `Correction`, `Interpretation`, `Restatement`,
+`Strengthening`, `Gap` or `Formalisation note`), `hash` the item hash (16 lowercase hexadecimal digits) and
 `date` `YYYY-MM-DD`. The items of one declaration and one kind are compared with the ledger
 together:
 

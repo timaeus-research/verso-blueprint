@@ -55,7 +55,7 @@ Relation to the source.
 
   A second paragraph.
 * A bullet without a label.
-* **Gap.** An unknown label.
+* **Remark.** An unknown label.
 
 Proof. By definition."
 
@@ -68,16 +68,30 @@ Proof. By definition."
   p.items[1]!.markdown ==
     "The paper works with *positive* integers;\nhere `n : Nat` may be zero.\n\nA second paragraph." &&
   p.problems == #[.unlabelled "A bullet without a label.",
-    .unknownLabel "Gap." "**Gap.** An unknown label."] &&
+    .unknownLabel "Remark." "**Remark.** An unknown label."] &&
   p.remainder == "The successor of `n`.\n\nRelation to the source.\n* A bullet without a label.\n" ++
-    "* **Gap.** An unknown label.\n\nProof. By definition." &&
+    "* **Remark.** An unknown label.\n\nProof. By definition." &&
   SourceRelation.stripSection "No section here.\n\nProof. Trivial." == "No section here.\n\nProof. Trivial." &&
   SourceRelation.stripSection "Text.\n\nRelation to the source.\n* **Correction.** A hypothesis.\n" ==
     "Text." &&
   (SourceRelation.parse "Text.\n\nRelation to the source.\nNo list here.").problems == #[.noItems] &&
   -- the period belongs inside the bold label
   (SourceRelation.parse "Relation to the source.\n* **Translation**. x").problems ==
-    #[.unknownLabel "Translation" "**Translation**. x"]
+    #[.unknownLabel "Translation" "**Translation**. x"] &&
+  -- every label, in any order; each renders as the annotation kind of its title
+  (SourceRelation.parse ("Relation to the source.\n* **Gap.** a\n* **Out of scope.** b\n" ++
+      "* **Unformalised.** c\n* **Restatement.** d\n* **Strengthening.** e\n" ++
+      "* **Interpretation.** f\n* **Correction.** g\n* **Translation.** h\n" ++
+      "* **Formalisation note.** i")).items.map (fun i => (i.label.kindKey, i.markdown)) ==
+    #[("gap", "a"), ("outOfScope", "b"), ("unformalised", "c"), ("restatement", "d"),
+      ("strengthening", "e"), ("interpretation", "f"), ("correction", "g"), ("translation", "h"),
+      ("meta", "i")] &&
+  SourceRelation.Label.all.all (fun l =>
+    (Editorial.Kind.ofKey? l.kindKey).map (·.title) == some l.text ||
+      (l == .formalisationNote && l.kindKey == "meta")) &&
+  -- labels are case-sensitive
+  (SourceRelation.parse "Relation to the source.\n* **Out of Scope.** x").problems ==
+    #[.unknownLabel "Out of Scope." "**Out of Scope.** x"]
 
 /-! ## The ledger -/
 
@@ -97,12 +111,12 @@ Proof. By definition."
   (ReviewLedger.parseLedger "[]").1.isEmpty &&
   (ReviewLedger.parseLedger "{}").2 == #["expected a JSON array of entries"] &&
   (ReviewLedger.parseLedger
-    "[{\"decl\":\"A.b\",\"kind\":\"Gap\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"},
+    "[{\"decl\":\"A.b\",\"kind\":\"Remark\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"},
       {\"decl\":\"A.b\",\"kind\":\"Translation\",\"hash\":\"0123456789ABCDEF\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"},
       {\"decl\":\"A.b\",\"kind\":\"Translation\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"1 Oct\"},
       {\"decl\":\"A.b\",\"kind\":\"Translation\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"}]").1.size == 1 &&
   (ReviewLedger.parseLedger
-    "[{\"decl\":\"A.b\",\"kind\":\"Gap\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"}]").2.size == 1
+    "[{\"decl\":\"A.b\",\"kind\":\"Remark\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"}]").2.size == 1
 
 /-! ## Several items of one kind
 
@@ -174,7 +188,7 @@ Relation to the source.
 * **Interpretation.** "Below" is read as the strict inequality `n < srcSucc n`.
 * **Correction.** The printed statement omits the hypothesis $n \ge 0$.
 * A bullet without a label.
-* **Gap.** An unknown label.
+* **Remark.** An unknown label.
 -/
 theorem srcSucc_gt (n : Nat) : n < srcSucc n := Nat.lt_succ_self n
 
@@ -189,13 +203,30 @@ Relation to the source.
 -/
 def srcThree : Nat := 3
 
+/-- Four.
+
+Relation to the source.
+* **Restatement.** The paper writes $2 + 2$.
+* **Strengthening.** The paper only says that four is positive.
+* **Out of scope.** The paper's four in other bases.
+-/
+def srcFour : Nat := 4
+
+/-- Five.
+
+Relation to the source.
+* **Gap.** The paper's five is prime; that is not stated.
+* **Unformalised.** The paper's sixth number.
+-/
+def srcFive : Nat := 5
+
 set_option doc.verso true
 set_option verso.blueprint.reviewLedger ".lake/source-annotations-test-ledger.json"
 
 /--
-warning: Verso.VersoBlueprintTests.SourceAnnotations.srcSucc_gt: a bullet of the "Relation to the source." section has no label (expected **Translation.**, **Interpretation.**, **Correction.** or **Formalisation note.**): A bullet without a label.
+warning: Verso.VersoBlueprintTests.SourceAnnotations.srcSucc_gt: a bullet of the "Relation to the source." section has no label (expected **Translation.**, **Unformalised.**, **Out of scope.**, **Correction.**, **Interpretation.**, **Restatement.**, **Strengthening.**, **Gap.** or **Formalisation note.**): A bullet without a label.
 ---
-warning: Verso.VersoBlueprintTests.SourceAnnotations.srcSucc_gt: unknown label **Gap.** in the "Relation to the source." section (expected **Translation.**, **Interpretation.**, **Correction.** or **Formalisation note.**): **Gap.** An unknown label.
+warning: Verso.VersoBlueprintTests.SourceAnnotations.srcSucc_gt: unknown label **Remark.** in the "Relation to the source." section (expected **Translation.**, **Unformalised.**, **Out of scope.**, **Correction.**, **Interpretation.**, **Restatement.**, **Strengthening.**, **Gap.** or **Formalisation note.**): **Remark.** An unknown label.
 -/
 #guard_msgs in
 #docs (Manual) sourceAnnotationsDoc "Source annotations" :=
@@ -287,7 +318,7 @@ private def removeLedger : IO Unit := do
 
 -- Three items of one kind; two identical bad bullets give one warning at the node.
 /--
-warning: Verso.VersoBlueprintTests.SourceAnnotations.srcThree: a bullet of the "Relation to the source." section has no label (expected **Translation.**, **Interpretation.**, **Correction.** or **Formalisation note.**): Twice the same bullet.
+warning: Verso.VersoBlueprintTests.SourceAnnotations.srcThree: a bullet of the "Relation to the source." section has no label (expected **Translation.**, **Unformalised.**, **Out of scope.**, **Correction.**, **Interpretation.**, **Restatement.**, **Strengthening.**, **Gap.** or **Formalisation note.**): Twice the same bullet.
 -/
 #guard_msgs in
 #docs (Manual) threeItemsDoc "Three items" :=
@@ -339,6 +370,37 @@ private def boxHashes (html : String) : List String :=
     badgeStates oneReview == ["reviewed", "unreviewed", "unreviewed"] &&
     -- the two bad bullets stay in the docstring display
     countSubstr html "Twice the same bullet." == 2
+
+-- The comparison kinds: every label renders as the annotation kind of its title; a `gap` or
+-- `unformalised` item owes work, so its node's header shows the badge, as a directive does.
+#docs (Manual) comparisonKindsDoc "Comparison kinds" :=
+:::::::
+:::definition "src.four" (lean := "srcFour")
+Four.
+:::
+
+:::definition "src.five" (lean := "srcFive")
+Five.
+:::
+:::::::
+
+/-- info: true -/
+#guard_msgs in
+#eval! show IO Bool from do
+  removeLedger
+  let html ← renderManualDocHtmlString impls comparisonKindsDoc
+  pure <|
+    countSubstr html "class=\"bp-editorial\"" == 5 &&
+    hasSubstr html "data-kind=\"restatement\"" && hasSubstr html "aria-label=\"Restatement\"" &&
+    hasSubstr html "data-kind=\"strengthening\"" && hasSubstr html "aria-label=\"Strengthening\"" &&
+    hasSubstr html "data-kind=\"outOfScope\"" && hasSubstr html "aria-label=\"Out of scope\"" &&
+    hasSubstr html "data-kind=\"gap\"" && hasSubstr html "aria-label=\"Gap\"" &&
+    hasSubstr html "data-kind=\"unformalised\"" && hasSubstr html "aria-label=\"Unformalised\"" &&
+    -- no `missing` badge on an item from a docstring
+    !hasSubstr html "bp-badge-missing" &&
+    -- the header badge on src.five only
+    countSubstr html "class=\"bp-correspondence-warning\"" == 1 &&
+    appearsBefore html "aria-label=\"Out of scope\"" "class=\"bp-correspondence-warning\""
 
 -- The generator's `--hide-review` flag is consumed and recorded.
 /-- info: true -/

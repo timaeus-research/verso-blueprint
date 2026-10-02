@@ -21,9 +21,10 @@ paper's, converse not claimed) or `gap` (weaker or incomparable). `translation` 
 `formalizationTodo` are the framework's older kinds and remain available.
 
 Besides the directives, the items of a "Relation to the source." section in the docstring of a
-declaration a node embeds become boxes of the kinds `translation`, `interpretation`, `correction`
-and `meta` (`Block.sourceItem`, `Informal.SourceAnnotations`); their review state comes from the
-review ledger (`Informal.ReviewLedger`). -/
+declaration a node embeds become boxes of these kinds, except `formalizationTodo`: each label names
+the kind of the same title, and a formalisation note is `meta` (`Block.sourceItem`,
+`Informal.SourceAnnotations`); their review state comes from the review ledger
+(`Informal.ReviewLedger`). An `unformalised` item from a docstring has no `missing` badge. -/
 inductive Kind where
   | «meta»
   | formalizationTodo
@@ -232,10 +233,10 @@ block_extension Block.editorial (kindKey review missing : String) where
 (`Informal.SourceRelation`). Its review state is looked up in the review ledger when the page is
 generated (`Informal.ReviewLedger`). -/
 structure SourceItem where
-  /-- The annotation kind that renders the item's label (`translation`, `interpretation`,
-  `correction`, or `meta` for a formalisation note). -/
+  /-- The annotation kind that renders the item's label (`SourceRelation.Label.kindKey`: the kind
+  of the same title, or `meta` for a formalisation note). -/
   kind : Kind
-  /-- The item's label as the ledger names it (`Translation`, ..., `Formalisation note`). -/
+  /-- The item's label as the ledger names it (`Translation`, ..., `Gap`, `Formalisation note`). -/
   label : String
   /-- The full name of the declaration: the ledger's `decl`. -/
   decl : String
@@ -299,11 +300,14 @@ def isSourceItemBlock : Doc.Block Manual → Bool
   | _ => false
 
 /-- Inspect the document tree, not rendered HTML or author-supplied approval flags. True when an
-annotation of a kind that owes work (`unformalised`, `gap`, `formalizationTodo`) is present. -/
+annotation of a kind that owes work (`unformalised`, `gap`, `formalizationTodo`) is present, written
+as a directive or taken from a docstring. -/
 partial def hasFormalizationTodo : Doc.Block Manual → Bool
   | .other ext children =>
     (ext.name == ``Block.editorial &&
       ((fromJson? (α := Annotation) ext.data).toOption.map (·.kind.owesWork) |>.getD false)) ||
+    (ext.name == ``Block.sourceItem &&
+      ((fromJson? (α := SourceItem) ext.data).toOption.map (·.kind.owesWork) |>.getD false)) ||
       children.any hasFormalizationTodo
   | .concat bs | .blockquote bs => bs.any hasFormalizationTodo
   | .ul items | .ol _ items => items.any fun item => item.contents.any hasFormalizationTodo
