@@ -29,6 +29,7 @@ import VersoBlueprint.Informal.ExternalCode
 import VersoBlueprint.Informal.ExternalMarkupRender
 import VersoBlueprint.Lib.ExtensionDecode
 import VersoBlueprint.Resolve
+import VersoBlueprint.SourceAnnotations
 import VersoBlueprint.Source.Metadata
 import VersoBlueprint.TeX
 import VersoBlueprint.TraversalIndex
@@ -111,10 +112,13 @@ block_extension Block.informal (data : BlockData) where
         let relatedPanelContext := RelatedPanel.RelationContext.ofState s
         let markup :=
           (Informal.TraversalIndex.ExternalMarkup.data? s data.label).map (·.markup.toArray) |>.getD #[]
+        -- The boxes taken from docstrings do not count as a body of the node: a node whose only
+        -- blocks are those boxes still shows its external markup, followed by the boxes.
+        let sourceItemBlocks := blocks.filter Editorial.isSourceItemBlock
         let selectedMarkupAndContent? :=
           match data.kind with
           | .statement _ =>
-              if blocks.isEmpty then
+              if blocks.all Editorial.isSourceItemBlock then
                 Informal.ExternalMarkupRender.selectedContent? {} markup
               else
                 none
@@ -168,7 +172,7 @@ block_extension Block.informal (data : BlockData) where
           | .proof => pure .empty
         let content ←
           match selectedMarkupAndContent? with
-          | some (_, selectedContent) => pure selectedContent
+          | some (_, selectedContent) => pure (selectedContent ++ (← sourceItemBlocks.mapM goB))
           | none => blocks.mapM goB
         let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
         let groupEntry ← RelatedPanel.renderGroupExtra relatedPanelContext data
@@ -293,6 +297,12 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let (contents, registration?) ← try
       let contents ← (show DocElabM _ from fun ctx =>
         (parsedContents.body.mapM elabBlock) { ctx with docReconstructionPlaceholder := none })
+      -- The "Relation to the source." items of the embedded declarations' docstrings, as
+      -- annotation boxes under the statement.
+      let contents ← match resolved.codeHint with
+        | some (.external refs) =>
+          pure (contents ++ (← SourceAnnotations.termsForRefs resolved.labelSyntax refs))
+        | _ => pure contents
       if !accepted then
         pure (contents, none)
       else

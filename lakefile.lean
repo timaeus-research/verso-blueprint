@@ -48,6 +48,7 @@ lean_lib VersoBlueprintTests where
     `VersoBlueprintTests.OccurrenceInventoryImported,
     `VersoBlueprintTests.OccurrenceInventory,
     `VersoBlueprintTests.Editorial,
+    `VersoBlueprintTests.SourceAnnotations,
     `VersoBlueprintTests.BlueprintAssets,
     `VersoBlueprintTests.BlueprintAutoDeps,
     `VersoBlueprintTests.BlueprintAttribute,

@@ -8,6 +8,7 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Lib.HtmlId
+import VersoBlueprint.SourceRelation
 
 open Lean Meta
 
@@ -626,7 +627,8 @@ private def renderDeclHtmlDocstringFromInfoE
     (decl : Name) (cinfo : ConstantInfo)
     (headerBadge? : Option ExternalDeclHeaderBadge := none)
     (headerSource? : Option ExternalDeclHeaderSource := none)
-    (showBody : Bool := true) (showUniverses : Bool := false) : MetaM ExternalDeclRenderResult :=
+    (showBody : Bool := true) (showUniverses : Bool := false)
+    (stripSourceRelation : Bool := false) : MetaM ExternalDeclRenderResult :=
   open Verso.Output.Html in do
   let env ← getEnv
   let declType ←
@@ -634,6 +636,9 @@ private def renderDeclHtmlDocstringFromInfoE
       Verso.Genre.Manual.Block.Docstring.DeclType.ofName decl (hideStructureConstructor := true)
   let signature ← signatureWithBody decl cinfo showBody showUniverses
   let docs? ← liftM <| findDocString? env decl
+  -- The node shows the "Relation to the source." items as annotation boxes.
+  let docs? :=
+    if stripSourceRelation then docs?.map SourceRelation.stripSection else docs?
 
   let rendered := renderWithHoverPayloads <| do
     let ctorSection? : Option ExternalDeclHtml ←
@@ -693,16 +698,19 @@ private def renderDeclHtmlDocstringFromInfoE
 /--
 Render one declaration directly from known declaration facts.
 Errors represent rendering failures only; declaration lookup is handled by callers.
+With `stripSourceRelation`, the docstring is shown without its "Relation to the source." section
+(`SourceRelation.stripSection`), which the embedding node renders as annotation boxes.
 -/
 def renderDeclHtmlDirectFromInfoE
     (decl : Name) (cinfo : ConstantInfo)
     (headerBadge? : Option ExternalDeclHeaderBadge := none)
     (headerSource? : Option ExternalDeclHeaderSource := none)
-    (showBody : Bool := true) (showUniverses : Bool := false) : MetaM ExternalDeclRenderResult := do
+    (showBody : Bool := true) (showUniverses : Bool := false)
+    (stripSourceRelation : Bool := false) : MetaM ExternalDeclRenderResult := do
   try
     renderDeclHtmlDocstringFromInfoE decl cinfo
       (headerBadge? := headerBadge?) (headerSource? := headerSource?) (showBody := showBody)
-      (showUniverses := showUniverses)
+      (showUniverses := showUniverses) (stripSourceRelation := stripSourceRelation)
   catch ex =>
     return .error (.exception decl (← ex.toMessageData.toString))
 

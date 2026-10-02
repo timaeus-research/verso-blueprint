@@ -2792,6 +2792,7 @@ def blueprintMain (text : Part Manual)
 where
   go : ReaderT ExtensionImpls IO UInt32 := do
     let extensionImpls ← read
+    let options ← Informal.ReviewLedger.takeHideReviewFlag options
     let cfg ← parseRenderConfigOptions (withBuildMetadataAssets config) options
     let cfg := if pdfOptions.enabled then { cfg with emitTeX := true } else cfg
     let buildMetadata ← readBuildMetadata
@@ -2823,6 +2824,7 @@ def blueprintMainWithPreviewData
     (extraSteps : List BlueprintExtraStep := []) : IO UInt32 := do
   let text ← Informal.Reader.prepare text
   let config := withBlueprintAssets config
+  let options ← Informal.ReviewLedger.takeHideReviewFlag options
   let (dumped?, options, externalMarkupConfig) ← handleCliFlags text options extensionImpls config
   if let some code := dumped? then
     return code

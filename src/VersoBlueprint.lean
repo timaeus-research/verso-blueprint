@@ -25,6 +25,9 @@ import VersoBlueprint.Math
 import VersoBlueprint.Rust
 import VersoBlueprint.Source
 import VersoBlueprint.Editorial
+import VersoBlueprint.SourceRelation
+import VersoBlueprint.ReviewLedger
+import VersoBlueprint.SourceAnnotations
 import VersoBlueprint.Environment
 import VersoBlueprint.DependencyAnalysis
 import VersoBlueprint.Attribute
