@@ -33,6 +33,9 @@ happens here, on the branch `timaeus/v4.33.1`; consumers pin a commit of that br
   `SourceAnnotations.lean`, `ReviewLedger.lean`): the "Relation to the source." section of an
   embedded declaration's docstring is rendered as annotation boxes at the node, with review
   badges from a review ledger; see [Annotations from docstrings](#annotations-from-docstrings).
+- Declaration links (`src/VersoBlueprint/ExternalDeclRender.lean`, `Informal/DeclRef.lean`): the
+  constants in rendered declaration code link to the node that presents them, and the inline role
+  `{decl}` links a declaration named in prose; see [Declaration links](#declaration-links).
 - Two patches to the pinned `verso` (`patches/verso-chapter-anchors.patch`,
   `patches/verso-term-universes.patch`), applied to a consumer's `.lake/packages/verso` by
   `scripts/apply-verso-patches.py <path-to-verso>` (idempotent, hash-checked). A consuming
@@ -167,6 +170,75 @@ vectors and the value above.
 docstring, without its review badge. The generator accepts the same flag
 (`lake lean Main.lean -- --run Main.lean --output _out/site --hide-review`), and the environment
 variable `VERSO_BLUEPRINT_HIDE_REVIEW=1` has the same effect.
+
+## Declaration links
+
+### In rendered declarations
+
+The declarations of a node's `(lean := "A, B")` are rendered with syntax highlighting. Every
+constant in that code (signature, definition body, structure fields, constructors) is a link:
+
+- to the node that presents the constant, if one does: the anchor of that node's rendering of the
+  declaration. When several nodes present it, the *canonical* node is used: the first node in
+  document order whose `(lean := ...)` list names the declaration, except that a `definition`
+  node takes precedence over a theorem, lemma, proposition or corollary node. So the constant
+  `CommutesWithSmoothMorphisms` in the statement of Theorem 36 links to the definition node
+  that presents it, even if a theorem node earlier in the document lists it too.
+  (`Resolve.canonicalDeclDomainName`, filled during traversal by `CanonicalDecls.register`);
+- otherwise, for a public constant of Lean core, Std, Lake, Mathlib or one of Mathlib's
+  dependencies (`docsModuleRoots`), to its entry in Mathlib's published API documentation,
+  `<docsBaseUrl><Module/Path>.html#<Name>`. The base is
+  `set_option verso.blueprint.externalCode.docsBaseUrl "..."`, by default
+  `https://leanprover-community.github.io/mathlib4_docs/`; the empty string turns these links
+  off. That site follows Mathlib's master branch, so a declaration that has moved or been renamed
+  since the Mathlib the project pins links to a page without its anchor, or to no page;
+- otherwise nowhere: the token keeps its hover and nothing else.
+
+Links have the class `bp_decl_link` (documentation links also `bp_decl_link_docs`). The same
+links appear wherever the renderer is used: on the chapter pages, in the hover previews of nodes
+and declarations, and in grafted previews. The annotation boxes taken from docstrings render their
+inline code as plain code, not highlighted code, and get no links.
+
+Declarations are rendered when their chapter is elaborated, but which node presents a constant is
+known only once the whole document has been traversed. The rendered HTML therefore wraps each
+constant token in a pair of comment markers (`bp-decl:NAME|DOCS` and `/bp-decl`), and the page
+renderer resolves them (`rewriteDeclLinks`). The generated `blueprint-manifest.json` keeps the
+unresolved markup in its `codeData` copies of the rendered declarations, as it keeps the hover
+markers there.
+
+### In prose: the `{decl}` role
+
+```
+Clause (1) is {decl}`HasRegularIrreducibleCenters`, and clause (4) is
+{decl}`CommutesWithSmoothMorphisms`; the map {decl ResolutionAssignment.map}`map` ...
+```
+
+`{decl}`Name`` renders `Name` as inline code that links where a constant token for that
+declaration would link: to the canonical node presenting it (with the declaration's code as hover
+preview), or to the API documentation. `{decl Other.name}`text`` resolves `Other.name` and displays
+`text`. The name is resolved, in order:
+
+0. Inside a node's statement or proof: among the declarations of that node, the one whose full name
+   is the name or ends with `.` followed by it, if exactly one does. So `map` inside the node
+   presenting `AnalyticSpace.ResolutionAssignment.map` is that field, whatever `map` means in the
+   chapter.
+1. As Lean resolves an identifier in the chapter: relative to the namespaces the file opens, or
+   fully qualified. Of the constants it denotes, the one presented at some node is taken.
+2. If it denotes no constant at all: against the declarations presented at nodes, by suffix (the
+   full name is the name or ends with `.` followed by it). If several match, those inside a
+   namespace the file opens are kept. Dot notation such as `D.blowUp` (for a variable `D`) is not
+   resolved.
+3. If it denotes exactly one constant that no node presents and that is in the API
+   documentation: a link there.
+
+Anything else is an error reported, with the source position, when the HTML is generated (only
+then are all nodes known): a name that denotes several declarations presented at nodes, matches
+several by suffix, or names a declaration that no node presents and the documentation does not
+cover. `lake exe vbp build` then fails, so prose cannot go on naming a declaration that the
+blueprint no longer presents. A code span that is not a Lean name (`h : Y ⟶ X`) is an elaboration
+error unless the name is given as argument. The role registers no dependency (use `{uses}` for
+that). In TeX the role is plain inline code. The tests are
+`tests/VersoBlueprintTests/BlueprintDeclLinks.lean`.
 
 ## Consuming
 

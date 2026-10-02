@@ -9,6 +9,7 @@ import VersoBlueprintTests.BlueprintAssets
 import VersoBlueprintTests.BlueprintAutoDeps
 import VersoBlueprintTests.BlueprintBlockFolding
 import VersoBlueprintTests.BlueprintCodeRenderMatrix
+import VersoBlueprintTests.BlueprintDeclLinks
 import VersoBlueprintTests.BlueprintImportedDuplicates.Direct
 import VersoBlueprintTests.BlueprintImportedDuplicates.Transitive
 import VersoBlueprintTests.BlueprintExternalHeadingStatus

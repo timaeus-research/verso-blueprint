@@ -51,6 +51,14 @@ is referenced by many blueprint entries. Inline preview bodies themselves are ke
 inline Blueprint code label.
 -/
 def externalRenderedDeclDomainName : Name := Name.mkSimple "Informal.Block.externalRenderedDecl"
+/--
+Domain that names, for each declaration presented at some node, the node whose rendering of it
+declaration links go to (keyed by the declaration's full name; object data
+`{"label", "definition"}`).
+The canonical node is the first node in document order whose `(lean := ...)` list names the
+declaration, except that a definition node takes precedence over a theorem-like node.
+-/
+def canonicalDeclDomainName : Name := Name.mkSimple "Informal.Block.canonicalDecl"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
 def citationPreviewDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.previews"
 def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
@@ -68,10 +76,11 @@ Key for one rendered external declaration target.
 
 The `decl` input should be canonicalized by callers (for example using `ExternalRef.canonical`).
 -/
-def externalRenderedDeclTargetKey (label decl : Name) : String :=
-  let labelStr := label.toString
-  let declStr := decl.toString
+def externalRenderedDeclTargetKeyOfStrings (labelStr declStr : String) : String :=
   s!"{labelStr.length}:{labelStr}|{declStr.length}:{declStr}"
+
+def externalRenderedDeclTargetKey (label decl : Name) : String :=
+  externalRenderedDeclTargetKeyOfStrings label.toString decl.toString
 
 def resolveDomainHref? (s : Verso.Genre.Manual.TraverseState) (domain : Name) (label : String) :
     Option String :=
@@ -109,6 +118,27 @@ def resolveInlineLeanDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : Na
 def resolveRenderedExternalDeclHref? (s : Verso.Genre.Manual.TraverseState)
     (label decl : Name) : Option String :=
   resolveDomainHref? s externalRenderedDeclDomainName (externalRenderedDeclTargetKey label decl)
+
+/-- The label of the canonical node presenting the declaration named `decl` (`Name.toString`). -/
+def canonicalDeclLabel? (s : Verso.Genre.Manual.TraverseState) (decl : String) : Option String := do
+  let obj ← s.getDomainObject? canonicalDeclDomainName decl
+  (obj.data.getObjValAs? String "label").toOption
+
+/--
+The link to the canonical node's rendering of the declaration named `decl` (`Name.toString`),
+when some node presents it.
+-/
+def resolveCanonicalDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : String) :
+    Option String := do
+  let label ← canonicalDeclLabel? s decl
+  resolveDomainHref? s externalRenderedDeclDomainName
+    (externalRenderedDeclTargetKeyOfStrings label decl)
+
+/-- The full names of all declarations presented at some node. -/
+def canonicalDeclNames (s : Verso.Genre.Manual.TraverseState) : Array String :=
+  match s.domains.get? canonicalDeclDomainName with
+  | none => #[]
+  | some dom => dom.objects.foldl (init := #[]) fun acc key _ => acc.push key
 
 /--
 Resolve a Lean declaration link as seen from one informal block.

@@ -144,5 +144,13 @@ def registerTraversedBlockAssets
   registerBlockPreviewData id blockData contents
   registerExternalCodePreviews id externalDecls
   registerExternalDeclAnchors blockData.label externalDecls
+  let definition :=
+    match blockData.kind with
+    | .statement .definition => true
+    | _ => false
+  for decl in externalDecls do
+    if decl.present then
+      modify fun s =>
+        Informal.TraversalIndex.CanonicalDecls.register s decl.canonical blockData.label definition
 
 end Informal

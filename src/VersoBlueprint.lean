@@ -51,6 +51,7 @@ import VersoBlueprint.Informal.GroupData
 import VersoBlueprint.Informal.Group
 import VersoBlueprint.Informal.Author
 import VersoBlueprint.Informal.Uses
+import VersoBlueprint.Informal.DeclRef
 import VersoBlueprint.ExternalDeclRender
 import VersoBlueprint.LeanNamesLegend
 import VersoBlueprint.Lean

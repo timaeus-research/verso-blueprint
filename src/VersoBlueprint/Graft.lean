@@ -91,7 +91,9 @@ private def renderLeanCodePreviewBody?
   | some (.ok stored) =>
       match stored.data.source with
       | .inlineBlocks blocks _sourceLocation => some <$> renderManualBlocks goB blocks
-      | .externalDecl decl => pure <| some <| Informal.ExternalCode.renderPreviewHtml #[decl]
+      | .externalDecl decl =>
+        pure <| some <| Informal.ExternalCode.renderPreviewHtml #[decl]
+          (declHref := Informal.Resolve.resolveCanonicalDeclHref? state)
 
 private def renderLeanCodeBodies
     [Monad m]
