@@ -791,7 +791,7 @@ def renderInformalBlockHtml (data : BlockData) (ctx : InformalBlockRenderContext
         | some (.inline code) => code.declarations.map (fun (d : CodeDeclData) => d.name.toString)
         | some (.external refs) => refs.map (fun (d : Data.ExternalRef) => d.canonical.toString)
         | none => #[]
-      let details := (data.paperIdentity.map ("Paper: " ++ ·.label)).getD "" ++
+      let details := (data.paperIdentity.map ("Source: " ++ ·.label)).getD "" ++
         (if decls.isEmpty then "" else "\nLean: " ++ String.intercalate ", " decls.toList) ++
         (match data.kind with | .proof => "\nBlock: proof" | _ => "")
       { headerExtras with custom := headerExtras.custom.push <|
