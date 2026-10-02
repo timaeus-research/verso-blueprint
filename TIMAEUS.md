@@ -29,12 +29,116 @@ happens here, on the branch `timaeus/v4.33.1`; consumers pin a commit of that br
   signature (`verso.blueprint.externalCode.definitionBodies`), declaration names shown relative
   to the namespaces open in the chapter file with one legend per page, universes hidden
   (`verso.blueprint.externalCode.showUniverses`).
+- Annotations taken from docstrings (`src/VersoBlueprint/SourceRelation.lean`,
+  `SourceAnnotations.lean`, `ReviewLedger.lean`): the "Relation to the source." section of an
+  embedded declaration's docstring is rendered as annotation boxes at the node, with review
+  badges from a review ledger; see [Annotations from docstrings](#annotations-from-docstrings).
 - Two patches to the pinned `verso` (`patches/verso-chapter-anchors.patch`,
   `patches/verso-term-universes.patch`), applied to a consumer's `.lake/packages/verso` by
   `scripts/apply-verso-patches.py <path-to-verso>` (idempotent, hash-checked). A consuming
   project needs it only if its documents put tags on page-level parts or embed native Lean
   `leanTerm` blocks (the anchor documents do; the greybook blueprint does not). Both fixes are
   candidates for upstream `leanprover/verso`.
+
+## Annotations from docstrings
+
+A declaration's docstring can say how its statement relates to the source it formalises. The
+docstring is then the single place where this is written; the blueprint renders it.
+
+### Format
+
+```
+Relation to the source.
+* **Translation.** `S.weakTransformSeq J i` is Hironaka's $J_i$, and `S.boundarySeq E₀ i` his $E_i$.
+* **Interpretation.** Hironaka's "non-singular" is read as smooth over `k`; for a scheme of finite
+  type over the perfect field `k` the two agree.
+* **Correction.** ...
+* **Formalisation note.** ...
+```
+
+- The heading is the first line whose text, without surrounding whitespace, is exactly
+  `Relation to the source.`; its indentation is the section's base indentation.
+- After it (blank lines allowed) comes a list of bullets: lines indented at most three columns
+  more than the heading whose text starts with `* ` (also `- ` or `+ `).
+- An item continues on the following lines indented more than its bullet; a blank line inside an
+  item separates paragraphs. The section ends before the first non-blank line that is neither a
+  bullet nor a continuation, or at the end of the docstring.
+- Each item begins with exactly one of the bold labels `**Translation.**`, `**Interpretation.**`,
+  `**Correction.**`, `**Formalisation note.**`, the period inside the bold. The item's text is
+  everything after the label; it is Markdown with inline code, emphasis and inline LaTeX
+  `$...$` (`$$...$$` for display math).
+- Kinds: a *translation* is a dictionary entry (this Lean expression is the source's
+  such-and-such); an *interpretation* fixes one reading of the source's wording; a *correction*
+  is a hypothesis the printed statement needs; a *formalisation note* is a difference in the form
+  of the statement, with the reason. They render as the `translation`, `interpretation`,
+  `correction` and `meta` directives do.
+
+### Rendering
+
+At a node with `(lean := "A, B")`, the items of the docstrings of `A` and `B` become annotation
+boxes appended to the node's statement, in `(lean := ...)` order and then docstring order; when
+the node embeds several declarations, each box names its declaration. The embedded declarations'
+plain docstring display leaves the section out. An item's Markdown is parsed by MD4Lean with
+LaTeX math spans (CommonMark, no raw HTML) and converted to Verso blocks by VersoManual's
+`Markdown.blockFromMarkdown`, the conversion verso-literate also uses: `$...$` becomes
+`Inline.math`, rendered (KaTeX in HTML, `$...$` in TeX) exactly like `` $`...` `` written in the
+document. Inline code is plain code (not elaborated). Each box carries `data-decl` and `data-hash`
+attributes, the values a ledger entry needs.
+
+A bullet without a label, or with a label other than the four (including `**Translation**.`), is
+reported as a warning when the chapter is elaborated, and stays in the plain docstring display
+under the heading. Nodes made with the `@[blueprint]` attribute show the docstring unchanged and
+no boxes. The hand-written directives keep working as before.
+
+### Review ledger
+
+Review status is not written in docstrings. The ledger is a JSON array of entries
+
+```json
+[{"decl": "AlgebraicGeometry.exists_blowUpSequence_ord_weakTransformSeq_lt",
+  "kind": "Translation", "hash": "d78b9d85c3d102a0", "reviewer": "BS", "date": "2026-10-02"}]
+```
+
+`decl` is the declaration's full name, `kind` one of `Translation`, `Interpretation`,
+`Correction`, `Formalisation note`, `hash` the item hash (16 lowercase hexadecimal digits) and
+`date` `YYYY-MM-DD`. An item is *reviewed* when an entry with its declaration, kind and hash
+exists (the badge names the reviewer and date of the latest one), *changed since review* when
+entries with its declaration and kind exist but none with its hash, and *unreviewed* otherwise.
+
+The ledger is `reviews.json` in the directory the site is generated from (the package root, where
+`lake exe vbp build` runs); `set_option verso.blueprint.reviewLedger "<path>"` in a chapter file
+names another file, relative to the same directory. It is read when the HTML or TeX is generated,
+so editing it needs no rebuild of the chapters. A missing ledger means every item is unreviewed; a
+malformed ledger or entry is a build error.
+
+The item hash is 64-bit FNV-1a (offset basis `0xcbf29ce484222325`, prime `0x100000001b3`) over
+the UTF-8 bytes of the item's text after the label, with every run of whitespace (space, tab,
+line feed, carriage return; no other character) replaced by one space and none at either end,
+written as 16 lowercase hexadecimal digits. Rewrapping or reindenting an item keeps its hash; any
+other edit changes it and turns a reviewed item into "changed since review". In Python:
+
+```python
+import re
+
+def item_hash(text: str) -> str:
+    h = 0xcbf29ce484222325
+    for b in re.sub(r"[ \t\n\r]+", " ", text).strip(" ").encode("utf-8"):
+        h = ((h ^ b) * 0x100000001b3) & 0xFFFFFFFFFFFFFFFF
+    return f"{h:016x}"
+
+assert item_hash("`S.boundarySeq E₀ i` is his $E_i$.") == "d78b9d85c3d102a0"
+```
+
+The Lean implementation is `Informal.SourceRelation.itemHash`; the test
+`tests/VersoBlueprintTests/SourceAnnotations.lean` checks it against the published FNV-1a test
+vectors and the value above.
+
+### Hiding review badges
+
+`lake exe vbp build --hide-review` renders every annotation box, hand-written or from a
+docstring, without its review badge. The generator accepts the same flag
+(`lake lean Main.lean -- --run Main.lean --output _out/site --hide-review`), and the environment
+variable `VERSO_BLUEPRINT_HIDE_REVIEW=1` has the same effect.
 
 ## Consuming
 
