@@ -86,9 +86,9 @@ document. Inline code is plain code (not elaborated). Each box carries `data-dec
 attributes, the values a ledger entry needs.
 
 A bullet without a label, or with a label other than the four (including `**Translation**.`), is
-reported as a warning when the chapter is elaborated, and stays in the plain docstring display
-under the heading. Nodes made with the `@[blueprint]` attribute show the docstring unchanged and
-no boxes. The hand-written directives keep working as before.
+reported as a warning at the node when the chapter is elaborated, once for each node, declaration
+and distinct problem, and stays in the plain docstring display under the heading. Nodes made
+with the `@[blueprint]` attribute show the docstring unchanged and no boxes. The hand-written directives keep working as before.
 
 ### Review ledger
 
@@ -101,9 +101,25 @@ Review status is not written in docstrings. The ledger is a JSON array of entrie
 
 `decl` is the declaration's full name, `kind` one of `Translation`, `Interpretation`,
 `Correction`, `Formalisation note`, `hash` the item hash (16 lowercase hexadecimal digits) and
-`date` `YYYY-MM-DD`. An item is *reviewed* when an entry with its declaration, kind and hash
-exists (the badge names the reviewer and date of the latest one), *changed since review* when
-entries with its declaration and kind exist but none with its hash, and *unreviewed* otherwise.
+`date` `YYYY-MM-DD`. The items of one declaration and one kind are compared with the ledger
+together:
+
+- An item is *reviewed* when an entry with its declaration, kind and hash exists; the badge names
+  the reviewer and the date of the latest one.
+- A *stale version* of a declaration and kind is a hash that the entries for that declaration and
+  kind name and that none of its current items of that kind has: the reviewed text of an item
+  edited (or deleted) since. Several entries with one hash count as one version.
+- An item with no entry for its hash is *changed since review* when the declaration and kind have
+  at least as many stale versions as the item's position among their items with no entry for
+  their hash, counted from 1 in docstring order; otherwise it is *unreviewed*.
+
+So when one of three reviewed items of a kind is edited, exactly one of the three shows "changed
+since review", and an item added next to reviewed ones shows "unreviewed". Items have no identity
+beyond their text, so stale versions are paired by position with the items that have no entry for
+their hash: if a new item stands before an edited one in the docstring, the new item is the one
+marked "changed since review". When an edited item is reviewed again, replace its entry rather
+than adding one: an entry kept for its old text still counts as a stale version. The rule is
+`Informal.ReviewLedger.status`.
 
 The ledger is `reviews.json` in the directory the site is generated from (the package root, where
 `lake exe vbp build` runs); `set_option verso.blueprint.reviewLedger "<path>"` in a chapter file
@@ -115,7 +131,7 @@ The item hash is 64-bit FNV-1a (offset basis `0xcbf29ce484222325`, prime `0x1000
 the UTF-8 bytes of the item's text after the label, with every run of whitespace (space, tab,
 line feed, carriage return; no other character) replaced by one space and none at either end,
 written as 16 lowercase hexadecimal digits. Rewrapping or reindenting an item keeps its hash; any
-other edit changes it and turns a reviewed item into "changed since review". In Python:
+other edit changes it and withdraws its review, leaving a stale version in the ledger. In Python:
 
 ```python
 import re

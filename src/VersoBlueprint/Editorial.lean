@@ -243,6 +243,11 @@ structure SourceItem where
   declLabel : String := ""
   /-- `SourceRelation.itemHash` of the item's text: the ledger's `hash`. -/
   hash : String
+  /-- The hashes of all items of this label in the declaration's docstring, in docstring order
+  (this item's included); `ReviewLedger.status` compares them with the ledger together. -/
+  siblings : Array String := #[]
+  /-- The position of this item in `siblings`. -/
+  index : Nat := 0
   /-- The ledger file (`verso.blueprint.reviewLedger` where the node was elaborated). -/
   ledger : String
 deriving BEq, FromJson, ToJson, Repr
@@ -254,11 +259,18 @@ def SourceItem.review {m} [Monad m] [MonadLiftT IO m] [Verso.MonadBuildLog m]
   if firstRead then
     for p in problems do
       Verso.reportError s!"Review ledger {item.ledger}: {p}"
-  return Review.ofStatus (ReviewLedger.status entries item.decl item.label item.hash)
+  let (hashes, index) :=
+    if item.siblings[item.index]? == some item.hash then (item.siblings, item.index)
+    else (#[item.hash], 0)
+  return Review.ofStatus (ReviewLedger.status entries item.decl item.label hashes index)
 
-block_extension Block.sourceItem (kindKey label decl declLabel hash ledger : String) where
-  data := toJson ({ kind := (Kind.ofKey? kindKey).getD .meta, label, decl, declLabel, hash, ledger } :
-    SourceItem)
+block_extension Block.sourceItem (kindKey label decl declLabel hash : String)
+    (siblings : Array String) (index : Nat) (ledger : String) where
+  data :=
+    let item : SourceItem :=
+      { kind := (Kind.ofKey? kindKey).getD .meta, label, decl, declLabel, hash, siblings, index,
+        ledger }
+    toJson item
   extraCss := [css]
   traverse _ _ _ := pure none
   toHtml := some fun _ goB _ raw blocks => do

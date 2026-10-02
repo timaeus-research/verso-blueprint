@@ -17,12 +17,25 @@ in a JSON file: an array of entries
 ```
 
 where `kind` is one of `Translation`, `Interpretation`, `Correction`, `Formalisation note` and
-`hash` is `Informal.SourceRelation.itemHash` of the item's text. An item is
+`hash` is `Informal.SourceRelation.itemHash` of the item's text. The items of one declaration and
+one kind are compared with the ledger together (`status`):
 
-* *reviewed* when an entry with its declaration, kind and hash exists (the badge names the reviewer
-  and the date of the latest such entry);
-* *changed since review* when entries with its declaration and kind exist but none with its hash;
-* *unreviewed* otherwise, and always when the ledger file does not exist.
+* an item is *reviewed* when an entry with its declaration, kind and hash exists (the badge names
+  the reviewer and the date of the latest such entry);
+* a *stale version* of a declaration and kind is a hash that the entries for that declaration and
+  kind name and that none of its current items of that kind has (the reviewed text of an item
+  edited or deleted since); several entries with one hash are one version;
+* an item with no entry for its hash is *changed since review* when the declaration and kind have
+  at least as many stale versions as the item's position among their items with no entry for their
+  hash, counted from 1 in docstring order, and *unreviewed* otherwise (always when the ledger file
+  does not exist).
+
+So an edit to one of three reviewed items of a kind marks exactly one of the three "changed since
+review", and an item added next to reviewed ones is unreviewed. Items have no identity beyond
+their text, so stale versions are paired by position with the items that have no entry for their
+hash: when a new item precedes an edited one in the docstring, the new item is the one marked. An
+entry kept for the old text of an item reviewed again is still a stale version; the convention is
+to replace an item's entry when it is reviewed again.
 
 The ledger is read when the HTML is generated (not when the Lean files are elaborated), so editing
 it needs no rebuild of the document's Lean modules; each file is read once per process.
@@ -89,16 +102,29 @@ def parseLedger (text : String) : Array Entry × Array String := Id.run do
         | none => entries := entries.push e
     return (entries, problems)
 
-/-- The state of the item of `kind` with `hash` in `decl`'s docstring, according to `entries`. -/
-def status (entries : Array Entry) (decl kind hash : String) : Status :=
+/--
+The state of the item at `index` among `hashes` according to `entries`, where `hashes` are the
+item hashes of all items of `kind` in `decl`'s docstring, in docstring order (see the module
+docstring for the rule). An `index` outside `hashes` is unreviewed.
+-/
+def status (entries : Array Entry) (decl kind : String) (hashes : Array String) (index : Nat) :
+    Status := Id.run do
+  let some hash := hashes[index]?
+    | return .unreviewed
   let sameKind := entries.filter fun e => e.decl == decl && e.kind == kind
   let matching := sameKind.filter (·.hash == hash)
-  match matching.foldl (init := none) (fun best e =>
+  if let some e := matching.foldl (init := none) (fun best e =>
       match best with
       | some (b : Entry) => if e.date > b.date then some e else some b
-      | none => some e) with
-  | some e => .reviewed e.reviewer e.date
-  | none => if sameKind.isEmpty then .unreviewed else .changedSinceReview
+      | none => some e) then
+    return .reviewed e.reviewer e.date
+  let reviewed (h : String) : Bool := sameKind.any (·.hash == h)
+  -- the versions of this declaration and kind that the ledger names and no current item has
+  let stale := sameKind.foldl (init := (#[] : Array String)) fun acc e =>
+    if hashes.contains e.hash || acc.contains e.hash then acc else acc.push e.hash
+  -- this item's position among the unmatched items, in docstring order, from 1
+  let rank := ((hashes.extract 0 (index + 1)).filter (!reviewed ·)).size
+  return if rank ≤ stale.size then .changedSinceReview else .unreviewed
 
 /-! ## Per-process state -/
 

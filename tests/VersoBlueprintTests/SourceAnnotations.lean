@@ -88,10 +88,12 @@ Proof. By definition."
     { decl := "A.b", kind := "Translation", hash := "0123456789abcdef", reviewer := "BS", date := "2026-10-01" },
     { decl := "A.b", kind := "Translation", hash := "0123456789abcdef", reviewer := "AS", date := "2026-10-02" },
     { decl := "A.b", kind := "Correction", hash := "1111111111111111", reviewer := "BS", date := "2026-10-01" }]
-  ReviewLedger.status entries "A.b" "Translation" "0123456789abcdef" == .reviewed "AS" "2026-10-02" &&
-  ReviewLedger.status entries "A.b" "Correction" "0123456789abcdef" == .changedSinceReview &&
-  ReviewLedger.status entries "A.b" "Interpretation" "0123456789abcdef" == .unreviewed &&
-  ReviewLedger.status entries "A.c" "Translation" "0123456789abcdef" == .unreviewed &&
+  -- an item alone of its kind: the latest matching review; a stale entry; no entry
+  ReviewLedger.status entries "A.b" "Translation" #["0123456789abcdef"] 0 == .reviewed "AS" "2026-10-02" &&
+  ReviewLedger.status entries "A.b" "Correction" #["0123456789abcdef"] 0 == .changedSinceReview &&
+  ReviewLedger.status entries "A.b" "Interpretation" #["0123456789abcdef"] 0 == .unreviewed &&
+  ReviewLedger.status entries "A.c" "Translation" #["0123456789abcdef"] 0 == .unreviewed &&
+  ReviewLedger.status entries "A.b" "Translation" #["0123456789abcdef"] 1 == .unreviewed &&
   (ReviewLedger.parseLedger "[]").1.isEmpty &&
   (ReviewLedger.parseLedger "{}").2 == #["expected a JSON array of entries"] &&
   (ReviewLedger.parseLedger
@@ -101,6 +103,57 @@ Proof. By definition."
       {\"decl\":\"A.b\",\"kind\":\"Translation\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"}]").1.size == 1 &&
   (ReviewLedger.parseLedger
     "[{\"decl\":\"A.b\",\"kind\":\"Gap\",\"hash\":\"0123456789abcdef\",\"reviewer\":\"BS\",\"date\":\"2026-10-01\"}]").2.size == 1
+
+/-! ## Several items of one kind
+
+The ledger's stale versions of a declaration and kind (hashes no current item of that kind has)
+are paired with the unmatched items in docstring order. -/
+
+private def h1 := "1111111111111111"   -- reviewed, unchanged
+private def h2 := "2222222222222222"   -- the current text of an item edited after its review
+private def h2old := "2020202020202020" -- that item's reviewed text
+private def h3 := "3333333333333333"   -- the current text of a second edited item
+private def h3old := "3030303030303030"
+private def h4 := "4444444444444444"   -- never reviewed
+
+private def review (decl kind hash : String) (reviewer := "BS") : ReviewLedger.Entry :=
+  { decl, kind, hash, reviewer, date := "2026-10-01" }
+
+/-- The state of each of the items `hashes` of `kind` in `decl`'s docstring, as badge states. -/
+private def states (entries : Array ReviewLedger.Entry) (decl kind : String)
+    (hashes : Array String) : List String :=
+  (List.range hashes.size).map fun i =>
+    match ReviewLedger.status entries decl kind hashes i with
+    | .reviewed .. => "reviewed"
+    | .changedSinceReview => "changed"
+    | .unreviewed => "unreviewed"
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  let base := #[review "A.d" "Translation" h1, review "A.d" "Translation" h2old]
+  -- reviewed, edited after review, never reviewed
+  states base "A.d" "Translation" #[h1, h2, h4] == ["reviewed", "changed", "unreviewed"] &&
+  -- the position of the reviewed item does not matter
+  states base "A.d" "Translation" #[h2, h1, h4] == ["changed", "reviewed", "unreviewed"] &&
+  -- positional pairing: a new item before the edited one is the one flagged
+  states base "A.d" "Translation" #[h4, h1, h2] == ["changed", "reviewed", "unreviewed"] &&
+  -- two edited items of three, two stale versions
+  states (base.push (review "A.d" "Translation" h3old)) "A.d" "Translation" #[h1, h2, h3] ==
+    ["reviewed", "changed", "changed"] &&
+  -- two reviews of the same old text are one stale version
+  states (base.push (review "A.d" "Translation" h2old (reviewer := "AS"))) "A.d" "Translation"
+    #[h1, h2, h4] == ["reviewed", "changed", "unreviewed"] &&
+  -- an item deleted after its review leaves a stale version; the others are unaffected
+  states base "A.d" "Translation" #[h1] == ["reviewed"] &&
+  -- entries of another kind or another declaration are not stale versions of this pair
+  states #[review "A.d" "Correction" h2old, review "A.e" "Translation" h2old] "A.d" "Translation"
+    #[h2, h4] == ["unreviewed", "unreviewed"] &&
+  -- reviewing one item of three changes nothing for the others
+  states #[review "A.d" "Translation" h1] "A.d" "Translation" #[h1, h2, h4] ==
+    ["reviewed", "unreviewed", "unreviewed"] &&
+  -- two identical items share their review
+  states #[review "A.d" "Translation" h1] "A.d" "Translation" #[h1, h1] == ["reviewed", "reviewed"]
 
 /-! ## A document -/
 
@@ -124,6 +177,17 @@ Relation to the source.
 * **Gap.** An unknown label.
 -/
 theorem srcSucc_gt (n : Nat) : n < srcSucc n := Nat.lt_succ_self n
+
+/-- Three.
+
+Relation to the source.
+* **Translation.** `srcThree` is the paper's $3$.
+* **Translation.** `srcThree` is written $\mathrm{III}$ in the paper.
+* **Translation.** The paper's $3$ is a natural number.
+* Twice the same bullet.
+* Twice the same bullet.
+-/
+def srcThree : Nat := 3
 
 set_option doc.verso true
 set_option verso.blueprint.reviewLedger ".lake/source-annotations-test-ledger.json"
@@ -220,6 +284,61 @@ private def removeLedger : IO Unit := do
     !hasSubstr hidden "data-review=" &&
     !hasSubstr hidden "reviewed EJ"
   pure (reviewedOk && hiddenOk)
+
+-- Three items of one kind; two identical bad bullets give one warning at the node.
+/--
+warning: Verso.VersoBlueprintTests.SourceAnnotations.srcThree: a bullet of the "Relation to the source." section has no label (expected **Translation.**, **Interpretation.**, **Correction.** or **Formalisation note.**): Twice the same bullet.
+-/
+#guard_msgs in
+#docs (Manual) threeItemsDoc "Three items" :=
+:::::::
+:::definition "src.three" (lean := "srcThree")
+Three.
+:::
+:::::::
+
+-- The states of the review badges in the HTML, in document order.
+private def badgeStates (html : String) : List String :=
+  (html.splitOn "class=\"bp-badge bp-badge-review\" data-review=\"").drop 1 |>.map fun piece =>
+    (piece.splitOn "\"").headD ""
+
+-- The values of the boxes' data-hash attributes in the HTML, in document order.
+private def boxHashes (html : String) : List String :=
+  (html.splitOn "data-hash=\"").drop 1 |>.map fun piece => (piece.splitOn "\"").headD ""
+
+-- Reviewed, edited after its review, never reviewed: one badge each.
+/-- info: true -/
+#guard_msgs in
+#eval! show IO Bool from do
+  removeLedger
+  let three := "Verso.VersoBlueprintTests.SourceAnnotations.srcThree"
+  let reviewedHash := SourceRelation.itemHash "`srcThree` is the paper's $3$."
+  let editedHash := SourceRelation.itemHash "`srcThree` is written $\\mathrm{III}$ in the paper."
+  let newHash := SourceRelation.itemHash "The paper's $3$ is a natural number."
+  -- the second item's text when it was reviewed
+  let oldHash := SourceRelation.itemHash "`srcThree` is written III in the paper."
+  IO.FS.writeFile ledgerPath s!"[
+    \{\"decl\": \"{three}\", \"kind\": \"Translation\", \"hash\": \"{reviewedHash}\",
+     \"reviewer\": \"BS\", \"date\": \"2026-10-01\"},
+    \{\"decl\": \"{three}\", \"kind\": \"Translation\", \"hash\": \"{oldHash}\",
+     \"reviewer\": \"BS\", \"date\": \"2026-09-01\"}
+  ]"
+  let html ← renderManualDocHtmlString impls threeItemsDoc
+  -- with the first item's review alone, the other two are unreviewed
+  IO.FS.writeFile ledgerPath s!"[
+    \{\"decl\": \"{three}\", \"kind\": \"Translation\", \"hash\": \"{reviewedHash}\",
+     \"reviewer\": \"BS\", \"date\": \"2026-10-01\"}
+  ]"
+  ReviewLedger.clearCache
+  let oneReview ← renderManualDocHtmlString impls threeItemsDoc
+  removeLedger
+  pure <|
+    boxHashes html == [reviewedHash, editedHash, newHash] &&
+    badgeStates html == ["reviewed", "changed", "unreviewed"] &&
+    countSubstr html "reviewed BS 2026-10-01" == 1 &&
+    badgeStates oneReview == ["reviewed", "unreviewed", "unreviewed"] &&
+    -- the two bad bullets stay in the docstring display
+    countSubstr html "Twice the same bullet." == 2
 
 -- The generator's `--hide-review` flag is consumed and recorded.
 /-- info: true -/

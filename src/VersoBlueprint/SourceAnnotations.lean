@@ -60,27 +60,38 @@ def itemBlocks (ref : Syntax) (decl : Name) (markdown : String) : DocElabM (Arra
 /--
 The annotation boxes of the "Relation to the source." items in the docstrings of `refs`, the
 declarations a node embeds. Problems in a section (an unlabelled bullet, an unknown label) are
-warnings at `ref`, the node's label. When the node embeds several declarations, each box names its
-declaration.
+warnings at `ref`, the node's label, one for each declaration and distinct problem (two identical
+bad bullets give one warning). When the node embeds several declarations, each box names its
+declaration. Each box carries the hashes of all items of its label in its declaration's docstring,
+which the review status needs (`Informal.ReviewLedger.status`).
 -/
 def termsForRefs (ref : Syntax) (refs : Array Data.ExternalRef) : DocElabM (Array Term) := do
   let ledger := verso.blueprint.reviewLedger.get (← getOptions)
   let several := refs.size > 1
   let env ← getEnv
   let mut out : Array Term := #[]
+  let mut warned : Std.HashSet (Name × String) := {}
   for extRef in refs do
     unless extRef.present do continue
     let decl := extRef.canonical
     let some docs ← (findDocString? env decl : IO _) | continue
     let parsed := SourceRelation.parse docs
     for problem in parsed.problems do
-      logWarningAt ref m!"{decl}: {problem.message}"
+      let msg := problem.message
+      unless warned.contains (decl, msg) do
+        warned := warned.insert (decl, msg)
+        logWarningAt ref m!"{decl}: {msg}"
     let declLabel := if several then extRef.displayName.toString else ""
-    for item in parsed.items do
+    for h : i in [0:parsed.items.size] do
+      let item := parsed.items[i]
+      -- the hashes of the items with this label, in docstring order, and this item's position
+      let siblings := parsed.items.filter (·.label == item.label) |>.map (·.hash)
+      let index := (parsed.items.extract 0 i).filter (·.label == item.label) |>.size
       let blocks ← itemBlocks ref decl item.markdown
       out := out.push (← ``(Verso.Doc.Block.other
         (Informal.Editorial.Block.sourceItem $(quote item.label.kindKey) $(quote item.label.text)
-          $(quote decl.toString) $(quote declLabel) $(quote item.hash) $(quote ledger))
+          $(quote decl.toString) $(quote declLabel) $(quote item.hash) $(quote siblings)
+          $(quote index) $(quote ledger))
         #[$blocks,*]))
   return out
 
