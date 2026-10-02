@@ -77,8 +77,9 @@ Relation to the source.
   A *Translation* is a dictionary entry (this Lean expression is the source's such-and-such),
   orthogonal to the three questions; a *Formalisation note* is the fallback for a remark that is
   none of these. Each label renders as the directive of the same name does (a formalisation note
-  as `meta`), and an *Unformalised* or *Gap* item, like those directives, marks its node's header
-  "Owes work". An *Unformalised* item from a docstring carries no `missing` badge.
+  as `meta`). Unlike those directives, an item from a docstring never marks its node's header
+  "Owes work" and carries no `missing` badge: it records a difference from the source, not work
+  owed.
 
 ### Rendering
 

@@ -301,13 +301,12 @@ def isSourceItemBlock : Doc.Block Manual → Bool
 
 /-- Inspect the document tree, not rendered HTML or author-supplied approval flags. True when an
 annotation of a kind that owes work (`unformalised`, `gap`, `formalizationTodo`) is present, written
-as a directive or taken from a docstring. -/
+as a directive. Items taken from docstrings never mark a node: there a gap is a recorded
+difference from the source, not work owed. -/
 partial def hasFormalizationTodo : Doc.Block Manual → Bool
   | .other ext children =>
     (ext.name == ``Block.editorial &&
       ((fromJson? (α := Annotation) ext.data).toOption.map (·.kind.owesWork) |>.getD false)) ||
-    (ext.name == ``Block.sourceItem &&
-      ((fromJson? (α := SourceItem) ext.data).toOption.map (·.kind.owesWork) |>.getD false)) ||
       children.any hasFormalizationTodo
   | .concat bs | .blockquote bs => bs.any hasFormalizationTodo
   | .ul items | .ol _ items => items.any fun item => item.contents.any hasFormalizationTodo

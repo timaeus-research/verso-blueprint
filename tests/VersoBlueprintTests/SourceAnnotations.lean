@@ -371,8 +371,8 @@ private def boxHashes (html : String) : List String :=
     -- the two bad bullets stay in the docstring display
     countSubstr html "Twice the same bullet." == 2
 
--- The comparison kinds: every label renders as the annotation kind of its title; a `gap` or
--- `unformalised` item owes work, so its node's header shows the badge, as a directive does.
+-- The comparison kinds: every label renders as the annotation kind of its title; an item from a
+-- docstring never puts the "Owes work" badge on its node, whatever its kind.
 #docs (Manual) comparisonKindsDoc "Comparison kinds" :=
 :::::::
 :::definition "src.four" (lean := "srcFour")
@@ -398,9 +398,8 @@ Five.
     hasSubstr html "data-kind=\"unformalised\"" && hasSubstr html "aria-label=\"Unformalised\"" &&
     -- no `missing` badge on an item from a docstring
     !hasSubstr html "bp-badge-missing" &&
-    -- the header badge on src.five only
-    countSubstr html "class=\"bp-correspondence-warning\"" == 1 &&
-    appearsBefore html "aria-label=\"Out of scope\"" "class=\"bp-correspondence-warning\""
+    -- no header badge
+    countSubstr html "class=\"bp-correspondence-warning\"" == 0
 
 -- The generator's `--hide-review` flag is consumed and recorded.
 /-- info: true -/
