@@ -6,8 +6,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 import VersoManual
 import VersoManual.Markdown
 import MD4Lean
+import VersoBlueprint.BibTeX
+import VersoBlueprint.Cite
 import VersoBlueprint.Data
 import VersoBlueprint.Editorial
+import VersoBlueprint.MarkdownTerms
 import VersoBlueprint.SourceRelation
 
 /-!
@@ -20,9 +23,12 @@ statement in `(lean := ...)` order and then docstring order; the embedded declar
 docstring display leaves the section out (`Informal.renderDeclHtmlDirectFromInfoE`).
 
 An item's text is Markdown, parsed by MD4Lean with LaTeX math spans and converted to Verso blocks
-by `Verso.Genre.Manual.Markdown.blockFromMarkdown`: inline code becomes `Inline.code`, emphasis
+by `Informal.MarkdownTerms.blockTerm`: inline code becomes `Inline.code`, emphasis
 `Inline.emph`/`Inline.bold`, and `$...$` (`$$...$$`) becomes `Inline.math .inline` (`.display`),
-which the page renders as it renders `` $`...` `` in the document.
+which the page renders as it renders `` $`...` `` in the document. A bracketed citation `[KEY]` or
+`[KEY, locator]` whose key is in the BibTeX bibliography (`blueprint_bibliography_file`) becomes
+the `{cite KEY}[locator]` inline, linked to the entry: the label is given a Markdown reference
+definition `[label]: bib:KEY`, and the link that results is converted to the inline.
 -/
 
 register_option verso.blueprint.reviewLedger : String := {
@@ -46,13 +52,23 @@ def markdownFlags : UInt32 :=
 def itemBlocks (ref : Syntax) (decl : Name) (markdown : String) : DocElabM (Array Term) := do
   let plain : DocElabM (Array Term) := do
     pure #[← ``(Verso.Doc.Block.para #[Verso.Doc.Inline.text $(quote markdown)])]
-  let some doc := MD4Lean.parse markdown markdownFlags
+  let env ← getEnv
+  let citations := Informal.BibTeX.findCitations env markdown
+  -- A reference definition per citation label makes `[KEY, locator]` a link to `bib:KEY`.
+  let definitions := String.join <| citations.toList.map fun (label, item) =>
+    s!"[{label}]: bib:{item.key}\n"
+  let text := if citations.isEmpty then markdown else markdown ++ "\n\n" ++ definitions
+  let some doc := MD4Lean.parse text markdownFlags
     | logWarningAt ref m!"{decl}: an item of the \"{SourceRelation.heading}\" section is not valid Markdown; shown as plain text"
       plain
+  let onLink (href : String) (contents : Array MD4Lean.Text) : DocElabM (Option Term) := do
+    let some key := href.dropPrefix? "bib:" |>.map (·.toString) | pure none
+    let some item := Informal.BibTeX.lookup? env key | pure none
+    let locator := Informal.BibTeX.citationLocator? item.key
+      (Informal.MarkdownTerms.textsToPlain contents)
+    some <$> Informal.mkBibCiteTerm item locator
   try
-    doc.blocks.mapM fun b =>
-      Verso.Genre.Manual.Markdown.blockFromMarkdown b
-        (handleHeaders := Verso.Genre.Manual.Markdown.strongEmphHeaders)
+    doc.blocks.mapM fun b => Informal.MarkdownTerms.blockTerm onLink b
   catch e =>
     logWarningAt ref m!"{decl}: an item of the \"{SourceRelation.heading}\" section cannot be rendered ({e.toMessageData}); shown as plain text"
     plain

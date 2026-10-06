@@ -1068,7 +1068,16 @@ default end-user view.
 ### Bibliography page
 
 `blueprint_bibliography` renders the bibliography entries
-registered in the document.
+registered in the document: the `Citable` declarations tagged `[bib "label"]`
+and cited with `{Informal.citep}`, `{Informal.citet}` or `{Informal.citehere}`,
+and the entries of a BibTeX file registered with
+`blueprint_bibliography_file "path"` (relative to the file holding the command)
+and cited with `{cite KEY}[locator]`, which renders as `[tag, locator]` linked
+to the entry. BibTeX entries that nothing cites are left out;
+`blueprint_bibliography_all` lists every registered entry. A docstring
+annotation item's `[KEY, locator]` whose key is registered is the same
+citation. Entry anchors are `bp-bib-<key>`. See `TIMAEUS.md`, "BibTeX
+citations", for the dialect read and for Lake rebuild tracking of the file.
 
 Projects that do not use citations can omit this page entirely.
 
