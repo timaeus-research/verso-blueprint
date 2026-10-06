@@ -82,3 +82,11 @@ html[data-bp-style="bold"] .bp_bibliography_uses {
   border-radius: var(--bp-radius-2xl);
   background: var(--bp-color-surface);
 }
+
+.bp_bibliography_tag {
+  font-weight: 600;
+}
+
+.bp_bibcite {
+  white-space: nowrap;
+}

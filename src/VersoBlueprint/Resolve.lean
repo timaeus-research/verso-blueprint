@@ -61,6 +61,7 @@ declaration, except that a definition node takes precedence over a theorem-like 
 def canonicalDeclDomainName : Name := Name.mkSimple "Informal.Block.canonicalDecl"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
 def citationPreviewDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.previews"
+def bibtexCitationPreviewDomainName : Name := Name.mkSimple "Informal.Inline.bibCite.previews"
 def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
 /--
 Domain that stores declaration anchors for inline Lean code.

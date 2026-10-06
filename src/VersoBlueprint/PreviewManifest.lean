@@ -2422,6 +2422,32 @@ private def buildCitationEntries
       htmlEntries := htmlEntries.push { key := manifestEntry.key, html }
   pure (entries, htmlEntries, hoverState)
 
+private def buildBibtexCitationEntries
+    (logError : String → IO Unit)
+    (state : TraverseState) : IO (Array Entry × Array RenderedResource) := do
+  let mut entries := #[]
+  let mut htmlEntries := #[]
+  for decoded in Informal.TraversalIndex.BibtexCitationPreviews.entries state do
+    match decoded with
+    | .error err =>
+      logError s!"Blueprint manifest: malformed BibTeX citation preview entry {err.canonicalName}: {err.message}"
+    | .ok stored =>
+      let citation := stored.data
+      -- The locator is in the preview's title, `[Kol07, Definition 29]`, not a row of the body.
+      let body := Informal.Cite.citationPreviewBody (Output.Html.text false citation.html) none none
+      let html := body
+      let manifestEntry : Entry := {
+        key := Informal.Cite.bibCitePreviewKey citation.key citation.locator
+        targetKind := .citation
+        label := citation.key.toName
+        facet := .statement
+        title := Informal.Cite.bibCitePreviewTitle citation
+        href := Informal.Cite.bibEntryHref? state citation.key
+      }
+      entries := entries.push manifestEntry
+      htmlEntries := htmlEntries.push { key := manifestEntry.key, html }
+  pure (entries, htmlEntries)
+
 private def buildSourceDocuments
     (logError : String → IO Unit)
     (state : TraverseState) : IO (Array Informal.Source.Document) := do
@@ -2477,6 +2503,9 @@ def buildPreviewDataFiles
   let (citationPreviews, citationHtml, hoverState) ←
     withTimedBuildProgress verbose "building citation preview entries" <|
       buildCitationEntries impls logError state hoverState
+  let (bibtexCitationPreviews, bibtexCitationHtml) ←
+    withTimedBuildProgress verbose "building BibTeX citation preview entries" <|
+      buildBibtexCitationEntries logError state
   let sourceDocuments ←
     withTimedBuildProgress verbose "building source document catalog" <|
       buildSourceDocuments logError state
@@ -2485,11 +2514,12 @@ def buildPreviewDataFiles
   let (previews, groups, htmlEntries, graphs) ←
     withTimedBuildProgress verbose "assembling Blueprint manifest/cache indexes" <| do
       let previews :=
-        (traversalPreviews ++ externalMarkupPreviews ++ leanCodePreviews ++ citationPreviews).qsort
+        (traversalPreviews ++ externalMarkupPreviews ++ leanCodePreviews ++ citationPreviews
+          ++ bibtexCitationPreviews).qsort
           (fun a b => a.key < b.key)
       let groups := buildGroupRelations state
       let htmlEntries :=
-        (traversalHtml ++ externalMarkupHtml ++ leanCodeHtml ++ citationHtml).qsort
+        (traversalHtml ++ externalMarkupHtml ++ leanCodeHtml ++ citationHtml ++ bibtexCitationHtml).qsort
           (fun a b => a.key < b.key)
       let mut graphEntries := #[]
       for decoded in Informal.GraphApi.cachedEntries state do
