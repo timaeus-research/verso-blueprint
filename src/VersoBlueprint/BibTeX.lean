@@ -222,8 +222,9 @@ def citationLocator? (key label : String) : Option String :=
   | _ => none
 
 /-- The bracketed labels of `s` whose key is registered, each with its entry: `[Kol07, Definition
-29]` gives `("Kol07, Definition 29", ⟨Kol07⟩)`. A label with a line break inside counts, with the
-break as written. -/
+29]` gives `("Kol07, Definition 29", ⟨Kol07⟩)`, and `[Atiyah's Resolution Theorem][Ati70]` gives
+`("Ati70", ⟨Ati70⟩)`, by which Markdown then reads the pair as a link with that text. A label with
+a line break inside counts, with the break as written. -/
 partial def findCitations (env : Environment) (s : String) : Array (String × BibItem) :=
   go s.startPos #[]
 where

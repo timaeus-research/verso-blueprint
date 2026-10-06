@@ -635,33 +635,46 @@ structure BibCiteData where
   tag : String
   /-- The locator: `Definition 29`. -/
   locator : Option String := none
+  /-- Text shown instead of the bracketed tag and locator: `Atiyah's Resolution Theorem` for a
+  citation written `[Atiyah's Resolution Theorem][Ati70]` in a docstring or `{citeAs Ati70}[Atiyah's
+  Resolution Theorem]` in prose. -/
+  text : Option String := none
   /-- The entry as text. -/
   plaintext : String
   /-- The entry as HTML, the hover preview. -/
   html : String
 deriving Inhabited, FromJson, ToJson, Quote
 
-/-- The text of the citation: `[Kol07, Definition 29]`, `[Kol07]`. -/
+/-- The text of the citation: `[Kol07, Definition 29]`, `[Kol07]`, or the text given. -/
 def BibCiteData.display (d : BibCiteData) : String :=
-  match d.locator with
-  | some loc => s!"[{d.tag}, {loc}]"
-  | none => s!"[{d.tag}]"
+  match d.text, d.locator with
+  | some text, _ => text
+  | none, some loc => s!"[{d.tag}, {loc}]"
+  | none, none => s!"[{d.tag}]"
 
-/-- The data of a `{cite}` inline of the entry `item` with the locator `locator`. -/
-def BibCiteData.ofItem (item : Informal.BibTeX.BibItem) (locator : Option String) : BibCiteData :=
+/-- The data of a `{cite}` inline of the entry `item` with the locator `locator`, or with the text
+`text` shown instead of the bracketed citation. -/
+def BibCiteData.ofItem (item : Informal.BibTeX.BibItem) (locator : Option String)
+    (text : Option String := none) : BibCiteData :=
   { key := item.key, tag := item.tag,
     locator := normalizedLocatorIndex (locator.map Informal.BibTeX.normalizeLocator),
+    text := normalizedLocatorIndex (text.map Informal.BibTeX.normalizeLocator),
     plaintext := item.plaintext, html := item.html }
 
-/-- The hover-preview manifest key of a citation of `key` with `locator`; citations with the
-same key and locator share the entry. -/
-def bibCitePreviewKey (key : String) (locator : Option String) : String :=
-  let locatorKey := (normalizedLocatorIndex locator).map Informal.HoverRender.previewKey |>.getD "none"
-  s!"bp-bibcite-{citationAnchorId key}-{locatorKey}"
+/-- The hover-preview manifest key of a citation: citations with the same key, locator and text
+share the entry. -/
+def bibCitePreviewKey (d : BibCiteData) : String :=
+  let locatorKey := d.locator.map Informal.HoverRender.previewKey |>.getD "none"
+  match d.text with
+  | some text => s!"bp-bibcite-{citationAnchorId d.key}-{locatorKey}-{Informal.HoverRender.previewKey text}"
+  | none => s!"bp-bibcite-{citationAnchorId d.key}-{locatorKey}"
 
-/-- The title of the hover preview of a citation: its text, `[Kol07, Definition 29]`. -/
+/-- The title of the hover preview of a citation: `[Kol07, Definition 29]`, with the text given
+first when there is one. -/
 def bibCitePreviewTitle (d : BibCiteData) : String :=
-  d.display
+  match d.text with
+  | some text => s!"{text} [{d.tag}{(d.locator.map (", " ++ ·)).getD ""}]"
+  | none => d.display
 
 /-- The address of the bibliography entry `key`: the bibliography part's page, or else the
 anchor the entry registered, with the entry's fragment. -/
@@ -690,7 +703,7 @@ inline_extension Inline.bibCite (data : BibCiteData) where
     let summary := usageSummary ctxt
     modify fun st =>
       let st := Informal.TraversalIndex.BibtexCitationPreviews.saveData st
-        (bibCitePreviewKey cfg.key cfg.locator) (toJson cfg)
+        (bibCitePreviewKey cfg) (toJson cfg)
       let st := Informal.TraversalIndex.CitationUsages.saveId st cfg.key id
       match href? with
       | some href =>
@@ -728,7 +741,7 @@ inline_extension Inline.bibCite (data : BibCiteData) where
           linkNode
         else
           let previewTarget := Informal.HoverRender.InlinePreviewTarget.manifestBacked
-            (bibCitePreviewKey cfg.key cfg.locator) (bibCitePreviewTitle cfg)
+            (bibCitePreviewKey cfg) (bibCitePreviewTitle cfg)
           Informal.HoverRender.inlinePreviewTargetNode linkNode previewTarget
       match st.externalTags[id]? |>.map (·.htmlId.toString) with
       | some anchorId => pure {{<span id={{anchorId}}>{{node}}</span>}}
@@ -814,10 +827,12 @@ instance : FromArgs BibCiteConfig m where
 
 end
 
-/-- The `{cite}` inline of the entry `item` with the locator `locator`, as a term. -/
-def mkBibCiteTerm (item : Informal.BibTeX.BibItem) (locator : Option String) : DocElabM Term :=
+/-- The `{cite}` inline of the entry `item` with the locator `locator`, or with the text `text`
+shown instead of the bracketed citation, as a term. -/
+def mkBibCiteTerm (item : Informal.BibTeX.BibItem) (locator : Option String)
+    (text : Option String := none) : DocElabM Term :=
   ``(Verso.Doc.Inline.other
-    (Informal.Cite.Inline.bibCite $(quote (Cite.BibCiteData.ofItem item locator))) #[])
+    (Informal.Cite.Inline.bibCite $(quote (Cite.BibCiteData.ofItem item locator text))) #[])
 
 /--
 `{cite KEY}[locator]` cites the entry `KEY` of the BibTeX bibliography (`blueprint_bibliography_file`):
@@ -834,5 +849,22 @@ def cite : RoleExpanderOf BibCiteConfig
     let env ← getEnv
     let locator := String.join (contents.toList.map fun c => Verso.Doc.Elab.inlineToString env c.raw)
     mkBibCiteTerm item (some locator)
+
+/--
+`{citeAs KEY}[text]` cites the entry `KEY` with `text` as the link's text, where `{cite KEY}[]`
+would show the bracketed tag: `{citeAs Ati70}[Atiyah's Resolution Theorem]`. The hover preview
+is titled `text [Ati70]`.
+-/
+@[role]
+def citeAs : RoleExpanderOf BibCiteConfig
+  | cfg, contents => do
+    let some item := Informal.BibTeX.lookup? (← getEnv) cfg.key.val
+      | throwErrorAt cfg.key.syntax "Unknown bibliography key '{cfg.key.val}' (register the \
+          bibliography with blueprint_bibliography_file)"
+    let env ← getEnv
+    let text := String.join (contents.toList.map fun c => Verso.Doc.Elab.inlineToString env c.raw)
+    if text.trimAscii.isEmpty then
+      throwError "\{citeAs}: give the text to show, or cite with \{cite {cfg.key.val}}[]"
+    mkBibCiteTerm item none (some text)
 
 end Informal

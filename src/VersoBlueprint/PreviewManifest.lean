@@ -2520,7 +2520,7 @@ private def buildBibtexCitationEntries
       let body := Informal.Cite.citationPreviewBody (Output.Html.text false citation.html) none none
       let html := Output.Html.asString body
       let manifestEntry : Entry := {
-        key := Informal.Cite.bibCitePreviewKey citation.key citation.locator
+        key := Informal.Cite.bibCitePreviewKey citation
         targetKind := .citation
         label := citation.key.toName
         facet := .statement
