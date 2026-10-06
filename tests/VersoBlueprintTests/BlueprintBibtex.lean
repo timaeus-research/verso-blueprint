@@ -85,7 +85,7 @@ blueprint_bibliography_bibtex "@book{Kol07, author = {A}, title = {T}, year = {2
 
 /-! ## A document -/
 
-/-- The successor.
+/-- The successor, as in [Kol07, Definition 29] and $n + 1$.
 
 Relation to the source.
 * **Translation.** `bibSucc n` is $n + 1$ of [Kol07, Definition 29]; see also [Hir64, Ch. 0,
@@ -163,8 +163,12 @@ The successor.
     countSubstr html "class=\"bp_bibcite\">[Kol07, Definition 29]</a>" == 2 &&
     hasSubstr html "class=\"bp_bibcite\">[Hir64, Ch. 0, §1]</a>" &&
     hasSubstr html "the unknown [Nope, Lemma 1]." &&
+    -- the embedded declaration's docstring, rendered with its citation linked and its math
+    hasSubstr html "The successor, as in <a class=\"bp_bibcite\" href=\"#bp-bib-kol07\">[Kol07, Definition 29]</a> and <code class=\"math inline\">n + 1</code>.</p>" &&
+    hasSubstr html "<div class=\"docstring\">" &&
     hasSubstr html "class=\"bp_bibcite\">Hironaka's Main Theorem I</a>" &&
-    hasSubstr html "Cited from (3)"
+    hasSubstr html "Cited from (3)" &&
+    !hasSubstr html "<pre class=\"docstring\">"
 
 /-- info: true -/
 #guard_msgs in

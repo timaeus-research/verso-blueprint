@@ -133,7 +133,7 @@ private def informalBlockToHtml (renderPreview : PreviewResources.Render := Prev
               getDeclHref
               getDeclAnchorAttrs
               (folded := data.foldCodeBlock)
-              (declHref := Resolve.resolveCanonicalDeclHref? s)
+              (declHref := TraversalIndex.resolveExternalDeclLinkHref? s)
         let content ←
           match selectedMarkupAndContent? with
           | some (_, selectedContent) => pure (selectedContent ++ (← sourceItemBlocks.mapM goB))

@@ -8,6 +8,8 @@ import Lean
 import Verso
 import VersoManual
 import VersoBlueprint.Docstring
+import VersoBlueprint.BibTeX
+import VersoBlueprint.DocstringHtml
 import VersoBlueprint.Lib.HtmlId
 import VersoBlueprint.Macros
 import VersoBlueprint.SourceRelation
@@ -118,9 +120,10 @@ def rewriteDeclLinks (html : String) (declHref : String → Option String) : Str
           match header.splitOn "|" with
           | [n, d] => (declMarkerDecode n, declMarkerDecode d)
           | _ => (declMarkerDecode header, "")
+        let linkClass := if name.startsWith "bib:" then "bp_bibcite" else "bp_decl_link"
         let href? : Option (String × String) :=
           match declHref name with
-          | some href => some (href, "bp_decl_link")
+          | some href => some (href, linkClass)
           | none => if docs.isEmpty then none else some (docs, "bp_decl_link bp_decl_link_docs")
         let (openTag, closeTag) :=
           match href? with
@@ -422,26 +425,39 @@ private def signatureToHtml (keywordText : String) (sig : Verso.Genre.Manual.Sig
     </div>
   }}
 
-private def plainDocstringHtml (docs? : Option String) : ExternalDeclHtml :=
+/-- A citation of the bibliography entry `item` in a docstring, showing `text`: a link marked for
+`rewriteDeclLinks`, which resolves `bib:KEY` to the entry's address on the page (class
+`bp_bibcite`). -/
+private def docstringCitationHtml (item : Informal.BibTeX.BibItem) (text : String) : ExternalDeclHtml :=
+  open Verso.Output.Html in
+  {{ {{.text false s!"{declMarkerOpenPrefix}{declMarkerEncode ("bib:" ++ item.key)}|-->"}}
+     {{.text true text}}
+     {{.text false declMarkerClose}} }}
+
+/-- A docstring as HTML (`Informal.DocstringHtml.render?`), with its citations linked; as written,
+in a `<pre>`, when it is not Markdown that renders. -/
+private def plainDocstringHtml (env : Environment) (docs? : Option String) : ExternalDeclHtml :=
   open Verso.Output.Html in
   match docs? with
   | none => .empty
   | some docs =>
-    {{<pre class="docstring">{{.text true docs}}</pre>}}
+    match Informal.DocstringHtml.render? env docs docstringCitationHtml with
+    | some html => {{<div class="docstring">{{html}}</div>}}
+    | none => {{<pre class="docstring">{{.text true docs}}</pre>}}
 
 private def structuralDocstringHtml
     (doc : Lean.VersoDocString) (texPrelude : String) : ExternalDeclHtml :=
   .tag "div" #[("class", "docstring")]
     (Informal.Docstring.versoDocstringToHtml doc texPrelude)
 
-private def internalDocstringHtml
+private def internalDocstringHtml (env : Environment)
     (doc? : Option (String ⊕ Lean.VersoDocString))
     (fallback? : Option String)
     (texPrelude : String) : ExternalDeclHtml :=
   match doc? with
-  | some (.inl doc) => plainDocstringHtml (some doc)
+  | some (.inl doc) => plainDocstringHtml env (some doc)
   | some (.inr doc) => structuralDocstringHtml doc texPrelude
-  | none => plainDocstringHtml fallback?
+  | none => plainDocstringHtml env fallback?
 
 /-- With `stripSourceRelation`, a Markdown docstring is shown without its "Relation to the
 source." section (`SourceRelation.stripSection`). -/
@@ -451,7 +467,7 @@ private def docstringHtmlForDecl
     MetaM ExternalDeclHtml := do
   let doc? ← liftM <| findInternalDocString? env decl
   let doc? := if stripSourceRelation then doc?.map (·.map SourceRelation.stripSection id) else doc?
-  pure <| internalDocstringHtml doc? fallback? texPrelude
+  pure <| internalDocstringHtml env doc? fallback? texPrelude
 
 private def docsHtml (doc : ExternalDeclHtml) : ExternalDeclHtml :=
   open Verso.Output.Html in
@@ -813,7 +829,7 @@ private def renderDeclHtmlDocstringFromInfoE
         | some ctor =>
           let title := if isClass then "Instance Constructor" else "Constructor"
           let ctorHtml ← renderDocNameCtor ctor <|
-            nestedDocstrings.getD ctor.name (plainDocstringHtml ctor.docstring?)
+            nestedDocstrings.getD ctor.name (plainDocstringHtml env ctor.docstring?)
           pure <| renderTitledSection? decl title #[ctorHtml]
         | none => pure none
       | _ => pure none
@@ -824,7 +840,7 @@ private def renderDeclHtmlDocstringFromInfoE
         let rows ←
           fieldInfo.filter (fun f => f.subobject?.isNone) |>.mapM fun field =>
             renderFieldSignature field <|
-              nestedDocstrings.getD field.projFn (plainDocstringHtml field.docString?)
+              nestedDocstrings.getD field.projFn (plainDocstringHtml env field.docString?)
         pure <| renderTitledSection? decl (if isClass then "Methods" else "Fields") rows
       | _ => pure none
 
@@ -838,7 +854,7 @@ private def renderDeclHtmlDocstringFromInfoE
       | .inductive ctors _ _ =>
         let rows ← ctors.mapM fun ctor =>
           renderDocNameCtor ctor <|
-            nestedDocstrings.getD ctor.name (plainDocstringHtml ctor.docstring?)
+            nestedDocstrings.getD ctor.name (plainDocstringHtml env ctor.docstring?)
         pure <| renderTitledSection? decl "Constructors" rows
       | _ => pure none
 
