@@ -7,6 +7,8 @@ require «verso-slides» from git "https://github.com/leanprover/verso-slides"@"
 require subverso from git "https://github.com/leanprover/subverso"@"verso-v4.35.0-rc4"
 require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.115"
 require lean_vir from git "https://github.com/ejgallego/lean-vir"@"aa465b873387a0bf46669031da1af99f59b0f3b9"
+-- BibTeX parsing and formatting for `blueprint_bibliography_file` (brings fgdorais/lean4-unicode-basic).
+require BibtexQuery from git "https://github.com/dupuisf/BibtexQuery"@"852edafa268eb038a7158551fd580ee8433847b0"
 
 package VersoBlueprint where
   leanOptions := #[⟨`experimental.module, true⟩]
@@ -85,6 +87,7 @@ lean_lib VersoBlueprintTests where
     `VersoBlueprintTests.BlueprintPlacementContracts,
     `VersoBlueprintTests.BlueprintAttributeLateRendering,
     `VersoBlueprintTests.BlueprintBlockFolding,
+    `VersoBlueprintTests.BlueprintBibtex,
     `VersoBlueprintTests.BlueprintCodeRenderMatrix,
     `VersoBlueprintTests.BlueprintDocstringReferences,
     `VersoBlueprintTests.BlueprintDeclLinks,
