@@ -31,31 +31,16 @@ def citeAssetBundle : Informal.Commands.BlueprintAssetBundle :=
 
 syntax (name := bib) "bib" ppSpace str : attr
 
-private def parseNameOrSimple (s : String) : Name :=
-  let s := s.trimAscii.toString
-  let n := s.toName
-  if n.isAnonymous then Name.mkSimple s else n
-
 private def parseBibLabel (s : String) : Name :=
-  parseNameOrSimple s
+  Resolve.parseBibLabel s
 
+@[inherit_doc Resolve.normalizeLabel]
 def normalizeLabel (label : String) : String :=
-  (parseBibLabel label).toString
+  Resolve.normalizeLabel label
 
-/--
-Stable slug used in bibliography fragment URLs and citation preview keys.
-
-This intentionally keeps the historical lowercase, hyphen-separated bibliography
-anchor form instead of `Informal.HtmlId.key`. Use the `HtmlId` encoder for
-opaque generated element ids; citation anchors are user-visible URL fragments.
--/
+@[inherit_doc Resolve.citationAnchorId]
 def citationAnchorId (label : String) : String :=
-  let base := normalizeLabel label
-  base.foldl (init := "") fun acc c =>
-    if c.isAlphanum then
-      acc.push c.toLower
-    else
-      acc.push '-'
+  Resolve.citationAnchorId label
 
 initialize bibExt : PersistentEnvExtension (Name × Name) (Name × Name) (Lean.NameMap Name) ←
   registerPersistentEnvExtension {
@@ -676,19 +661,9 @@ def bibCitePreviewTitle (d : BibCiteData) : String :=
   | some text => s!"{text} [{d.tag}{(d.locator.map (", " ++ ·)).getD ""}]"
   | none => d.display
 
-/-- The address of the bibliography entry `key`: the bibliography part's page, or else the
-anchor the entry registered, with the entry's fragment. -/
+@[inherit_doc Informal.TraversalIndex.bibEntryHref?]
 def bibEntryHref? (st : TraverseState) (key : String) : Option String :=
-  let base? :=
-    match Resolve.resolveDomainHref? st Verso.Genre.Manual.sectionDomain "Contents--Blueprint-Bibliography" with
-    | some href => some href
-    | Option.none => Informal.TraversalIndex.Bibliography.href? st key
-  base?.map fun href =>
-    let cleanBase :=
-      match href.splitOn "#" with
-      | [] => href
-      | first :: _ => first
-    s!"{cleanBase}#bp-bib-{citationAnchorId key}"
+  Informal.TraversalIndex.bibEntryHref? st key
 
 open Verso Doc Elab Genre Manual in
 inline_extension Inline.bibCite (data : BibCiteData) where

@@ -598,6 +598,27 @@ def saveId (state : TraverseState) (label : String) (id : Verso.Multi.InternalId
 
 end Bibliography
 
+/-- The address of the bibliography entry `key`: the bibliography part's page, or else the
+anchor the entry registered, with the entry's fragment. -/
+def bibEntryHref? (st : TraverseState) (key : String) : Option String :=
+  let base? :=
+    match Resolve.resolveDomainHref? st Verso.Genre.Manual.sectionDomain "Contents--Blueprint-Bibliography" with
+    | some href => some href
+    | Option.none => Bibliography.href? st key
+  base?.map fun href =>
+    let cleanBase :=
+      match href.splitOn "#" with
+      | [] => href
+      | first :: _ => first
+    s!"{cleanBase}#bp-bib-{Resolve.citationAnchorId key}"
+
+/-- The address of a link target of rendered declaration HTML (`Informal.rewriteDeclLinks`): a
+constant's name resolves to the node presenting it, `bib:KEY` to the bibliography entry `KEY`. -/
+def resolveExternalDeclLinkHref? (st : TraverseState) (name : String) : Option String :=
+  match name.dropPrefix? "bib:" with
+  | some key => bibEntryHref? st key.toString
+  | none => Resolve.resolveCanonicalDeclHref? st name
+
 namespace CitationUsages
 
 def spec : StoreSpec := {

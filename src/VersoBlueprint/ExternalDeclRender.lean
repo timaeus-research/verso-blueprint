@@ -7,6 +7,8 @@ Author: Emilio J. Gallego Arias
 import Lean
 import Verso
 import VersoManual
+import VersoBlueprint.BibTeX
+import VersoBlueprint.DocstringHtml
 import VersoBlueprint.Lib.HtmlId
 import VersoBlueprint.SourceRelation
 
@@ -116,9 +118,10 @@ def rewriteDeclLinks (html : String) (declHref : String → Option String) : Str
           match header.splitOn "|" with
           | [n, d] => (declMarkerDecode n, declMarkerDecode d)
           | _ => (declMarkerDecode header, "")
+        let linkClass := if name.startsWith "bib:" then "bp_bibcite" else "bp_decl_link"
         let href? : Option (String × String) :=
           match declHref name with
-          | some href => some (href, "bp_decl_link")
+          | some href => some (href, linkClass)
           | none => if docs.isEmpty then none else some (docs, "bp_decl_link bp_decl_link_docs")
         let (openTag, closeTag) :=
           match href? with
@@ -420,16 +423,29 @@ private def signatureToHtml (keywordText : String) (sig : Verso.Genre.Manual.Sig
     </div>
   }}
 
-private def plainDocstringHtml (docs? : Option String) : ExternalDeclHtml :=
+/-- A citation of the bibliography entry `item` in a docstring, showing `text`: a link marked for
+`rewriteDeclLinks`, which resolves `bib:KEY` to the entry's address on the page (class
+`bp_bibcite`). -/
+private def docstringCitationHtml (item : Informal.BibTeX.BibItem) (text : String) : ExternalDeclHtml :=
+  open Verso.Output.Html in
+  {{ {{.text false s!"{declMarkerOpenPrefix}{declMarkerEncode ("bib:" ++ item.key)}|-->"}}
+     {{.text true text}}
+     {{.text false declMarkerClose}} }}
+
+/-- A docstring as HTML (`Informal.DocstringHtml.render?`), with its citations linked; as written,
+in a `<pre>`, when it is not Markdown that renders. -/
+private def plainDocstringHtml (env : Environment) (docs? : Option String) : ExternalDeclHtml :=
   open Verso.Output.Html in
   match docs? with
   | none => .empty
   | some docs =>
-    {{<pre class="docstring">{{.text true docs}}</pre>}}
+    match Informal.DocstringHtml.render? env docs docstringCitationHtml with
+    | some html => {{<div class="docstring">{{html}}</div>}}
+    | none => {{<pre class="docstring">{{.text true docs}}</pre>}}
 
-private def docsHtml (docs? : Option String) : ExternalDeclHtml :=
+private def docsHtml (env : Environment) (docs? : Option String) : ExternalDeclHtml :=
   open Verso.Output.Html in
-  {{<div class="docs">{{plainDocstringHtml docs?}}</div>}}
+  {{<div class="docs">{{plainDocstringHtml env docs?}}</div>}}
 
 private def externalDeclSectionLabelId (decl : Name) (title : String) : String :=
   Informal.HtmlId.prefixed "bp-external-decl-section" s!"{decl.toString}:{title}"
@@ -564,18 +580,20 @@ private def visibilityHtml (v : Verso.Genre.Manual.Block.Docstring.Visibility) :
   | .private => {{<span class="keyword">"private"</span>" "}}
   | .protected => .empty
 
-private def renderDocNameCtor (docName : Verso.Genre.Manual.Block.Docstring.DocName) :
+private def renderDocNameCtor (env : Environment)
+    (docName : Verso.Genre.Manual.Block.Docstring.DocName) :
     ExternalDeclHighlightRender ExternalDeclHtml :=
   open Verso.Output.Html in do
   let signatureHtml ← highlightedToHtml docName.signature
   pure {{
     <div class="constructor">
       <pre class="name-and-type hl lean">{{signatureHtml}}</pre>
-      {{docsHtml docName.docstring?}}
+      {{docsHtml env docName.docstring?}}
     </div>
   }}
 
-private def renderFieldSignature (field : Verso.Genre.Manual.Block.Docstring.FieldInfo) :
+private def renderFieldSignature (env : Environment)
+    (field : Verso.Genre.Manual.Block.Docstring.FieldInfo) :
     ExternalDeclHighlightRender ExternalDeclHtml :=
   open Verso.Output.Html in do
   let inheritedInfo : ExternalDeclHtml :=
@@ -599,7 +617,7 @@ private def renderFieldSignature (field : Verso.Genre.Manual.Block.Docstring.Fie
         {{visibilityHtml field.visibility}}{{fieldNameHtml}} " : " {{fieldTypeHtml}}
       </pre>
       {{inheritedInfo}}
-      {{docsHtml field.docString?}}
+      {{docsHtml env field.docString?}}
     </section>
   }}
 
@@ -764,7 +782,7 @@ private def renderDeclHtmlDocstringFromInfoE
         match ctor? with
         | some ctor =>
           let title := if isClass then "Instance Constructor" else "Constructor"
-          let ctorHtml ← renderDocNameCtor ctor
+          let ctorHtml ← renderDocNameCtor env ctor
           pure <| renderTitledSection? decl title #[ctorHtml]
         | none => pure none
       | _ => pure none
@@ -772,7 +790,7 @@ private def renderDeclHtmlDocstringFromInfoE
     let methodsOrFieldsSection? : Option ExternalDeclHtml ←
       match declType with
       | .structure isClass _ _ fieldInfo _ _ =>
-        let rows ← fieldInfo.filter (fun f => f.subobject?.isNone) |>.mapM renderFieldSignature
+        let rows ← fieldInfo.filter (fun f => f.subobject?.isNone) |>.mapM (renderFieldSignature env)
         pure <| renderTitledSection? decl (if isClass then "Methods" else "Fields") rows
       | _ => pure none
 
@@ -784,7 +802,7 @@ private def renderDeclHtmlDocstringFromInfoE
     let inductiveCtorsSection? : Option ExternalDeclHtml ←
       match declType with
       | .inductive ctors _ _ =>
-        let rows ← ctors.mapM renderDocNameCtor
+        let rows ← ctors.mapM (renderDocNameCtor env)
         pure <| renderTitledSection? decl "Constructors" rows
       | _ => pure none
 
@@ -804,9 +822,9 @@ private def renderDeclHtmlDocstringFromInfoE
 
     let body : ExternalDeclHtml :=
       if sections.isEmpty then
-        plainDocstringHtml docs?
+        plainDocstringHtml env docs?
       else
-        {{ {{plainDocstringHtml docs?}} {{sections}} }}
+        {{ {{plainDocstringHtml env docs?}} {{sections}} }}
     pure <| renderExternalDeclWrapper
       decl presentation.kindClass presentation.kindMarker signatureHtml body
       (headerBadge? := headerBadge?) (headerMeta := headerMeta) (headerSource? := headerSource?)

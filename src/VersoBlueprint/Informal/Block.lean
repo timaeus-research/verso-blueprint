@@ -169,7 +169,7 @@ block_extension Block.informal (data : BlockData) where
                 getDeclHref
                 getDeclAnchorAttrs
                 (folded := data.foldCodeBlock)
-                (declHref := Resolve.resolveCanonicalDeclHref? s)
+                (declHref := TraversalIndex.resolveExternalDeclLinkHref? s)
           | .proof => pure .empty
         let content ←
           match selectedMarkupAndContent? with
