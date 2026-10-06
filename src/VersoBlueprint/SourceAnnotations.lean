@@ -28,7 +28,8 @@ by `Informal.MarkdownTerms.blockTerm`: inline code becomes `Inline.code`, emphas
 which the page renders as it renders `` $`...` `` in the document. A bracketed citation `[KEY]` or
 `[KEY, locator]` whose key is in the BibTeX bibliography (`blueprint_bibliography_file`) becomes
 the `{cite KEY}[locator]` inline, linked to the entry: the label is given a Markdown reference
-definition `[label]: bib:KEY`, and the link that results is converted to the inline.
+definition `[label]: bib:KEY`, and the link that results is converted to the inline. A citation
+with its own text, `[Atiyah's Resolution Theorem][Ati70]`, shows that text, linked the same way.
 -/
 
 register_option verso.blueprint.reviewLedger : String := {
@@ -64,9 +65,13 @@ def itemBlocks (ref : Syntax) (decl : Name) (markdown : String) : DocElabM (Arra
   let onLink (href : String) (contents : Array MD4Lean.Text) : DocElabM (Option Term) := do
     let some key := href.dropPrefix? "bib:" |>.map (·.toString) | pure none
     let some item := Informal.BibTeX.lookup? env key | pure none
-    let locator := Informal.BibTeX.citationLocator? item.key
-      (Informal.MarkdownTerms.textsToPlain contents)
-    some <$> Informal.mkBibCiteTerm item locator
+    let label := Informal.MarkdownTerms.textsToPlain contents
+    if Informal.BibTeX.citationKey label == item.key then
+      -- `[KEY]` or `[KEY, locator]`
+      some <$> Informal.mkBibCiteTerm item (Informal.BibTeX.citationLocator? item.key label)
+    else
+      -- `[text][KEY]`: the text is shown, linked to the entry
+      some <$> Informal.mkBibCiteTerm item none (some label)
   try
     doc.blocks.mapM fun b => Informal.MarkdownTerms.blockTerm onLink b
   catch e =>

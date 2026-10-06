@@ -90,6 +90,7 @@ blueprint_bibliography_bibtex "@book{Kol07, author = {A}, title = {T}, year = {2
 Relation to the source.
 * **Translation.** `bibSucc n` is $n + 1$ of [Kol07, Definition 29]; see also [Hir64, Ch. 0,
   §1] and the unknown [Nope, Lemma 1].
+* **Formalisation note.** As in [Hironaka's Main Theorem I][Hir64].
 -/
 def bibSucc (n : Nat) : Nat := n + 1
 
@@ -107,7 +108,7 @@ See {cite Nope}[Lemma 1].
 :::::::
 :::lemma_ "lem:cite"
 By {cite Kol07}[Definition 29] and {cite Kol07}[], see {cite Sta}[Tag 01WQ] and
-{cite "Hir64"}[Main Theorem I, p. 132].
+{cite "Hir64"}[Main Theorem I, p. 132]; also {citeAs Kol07}[Kollár's lectures].
 :::
 
 :::definition "def:succ" (lean := "bibSucc")
@@ -138,7 +139,7 @@ The successor.
     hasSubstr html "#bp-bib-sta\" class=\"bp_bibcite\">" &&
     hasSubstr html "class=\"bp_bibcite\">[TSPA, Tag 01WQ]</a>" &&
     hasSubstr html "class=\"bp_bibcite\">[Hir64, Main Theorem I, p. 132]</a>" &&
-    hasSubstr html s!"data-bp-preview-key=\"{Cite.bibCitePreviewKey "Kol07" (some "Definition 29")}\"" &&
+    hasSubstr html s!"data-bp-preview-key=\"{Cite.bibCitePreviewKey { key := "Kol07", tag := "Kol07", locator := some "Definition 29", plaintext := "", html := "" }}\"" &&
     hasSubstr html "data-bp-preview-title=\"[Kol07, Definition 29]\"" &&
     hasSubstr html "<li id=\"bp-bib-kol07\">" &&
     hasSubstr html "<span class=\"bp_bibliography_tag\">[Kol07]</span> János Kollár." &&
@@ -146,10 +147,12 @@ The successor.
     hasSubstr html "<li id=\"bp-bib-hir64\">" &&
     !hasSubstr html "bp-bib-unc99" &&
     hasSubstr html "Bibliography (3)" &&
-    hasSubstr html "Cited from (3)" &&
+    hasSubstr html "Cited from (4)" &&
     hasSubstr html " - Cites Definition 29" &&
     hasSubstr html " - Cites Tag 01WQ" &&
-    (Informal.TraversalIndex.BibtexCitationPreviews.entries st).size == 5
+    hasSubstr html "class=\"bp_bibcite\">Kollár's lectures</a>" &&
+    hasSubstr html "data-bp-preview-title=\"Kollár's lectures [Kol07]\"" &&
+    (Informal.TraversalIndex.BibtexCitationPreviews.entries st).size == 7
 
 -- A docstring item: `[Kol07, Definition 29]` and `[Hir64, Ch. 0,\n  §1]` link; `[Nope, Lemma 1]` is text.
 /-- info: true -/
@@ -160,7 +163,8 @@ The successor.
     countSubstr html "class=\"bp_bibcite\">[Kol07, Definition 29]</a>" == 2 &&
     hasSubstr html "class=\"bp_bibcite\">[Hir64, Ch. 0, §1]</a>" &&
     hasSubstr html "the unknown [Nope, Lemma 1]." &&
-    hasSubstr html "Cited from (2)"
+    hasSubstr html "class=\"bp_bibcite\">Hironaka's Main Theorem I</a>" &&
+    hasSubstr html "Cited from (3)"
 
 /-- info: true -/
 #guard_msgs in

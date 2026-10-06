@@ -298,11 +298,14 @@ tag is `TSPA` renders as `[TSPA, Tag 01WQ]`. The content of the role is the loca
 text with its white space normalized. One key per role; an unknown key is an error. A key that
 is not a Lean identifier is given as a string: `{cite "a-b"}[]`.
 
+`{citeAs Ati70}[Atiyah's Resolution Theorem]` shows the content as the link's text instead of the
+bracketed tag; its hover preview is titled `Atiyah's Resolution Theorem [Ati70]`.
+
 In a docstring's "Relation to the source." items (see [Annotations from
 docstrings](#annotations-from-docstrings)), the bracketed citations `[Kol07]` and
 `[Kol07, Definition 29]` whose key is registered are the same inlines: the key is the text
-before the first comma, the locator the rest. A citation whose key is not registered stays as
-written.
+before the first comma, the locator the rest; and `[Atiyah's Resolution Theorem][Ati70]`, the
+form doc-gen4 also reads, is `{citeAs}`. A citation whose key is not registered stays as written.
 
 In TeX output a citation is its text, `[Kol07, Definition 29]`.
 
