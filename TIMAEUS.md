@@ -37,11 +37,16 @@ happens here, on the branch `timaeus/v4.33.1`; consumers pin a commit of that br
   constants in rendered declaration code link to the node that presents them, and the inline role
   `{decl}` links a declaration named in prose; see [Declaration links](#declaration-links).
 - BibTeX citations (`src/VersoBlueprint/BibTeX.lean`, `Cite.lean`, `Commands/Bibliography.lean`,
-  `SourceAnnotations.lean`, `MarkdownTerms.lean`): `blueprint_bibliography_file "references.bib"`
-  registers a BibTeX file, formatted by BibtexQuery as doc-gen4 formats an API documentation's
-  references page; `{cite Kol07}[Definition 29]` cites an entry in prose, `[Kol07, Definition 29]`
-  in a docstring annotation item is the same citation, and `blueprint_bibliography` lists the
-  cited entries with their "Cited from" backlinks; see [BibTeX citations](#bibtex-citations).
+  `SourceAnnotations.lean`, `MarkdownTerms.lean`, `DocstringHtml.lean`):
+  `blueprint_bibliography_file "references.bib"` registers a BibTeX file, formatted by BibtexQuery
+  as doc-gen4 formats an API documentation's references page; `{cite Kol07}[Definition 29]` cites
+  an entry in prose, `[Kol07, Definition 29]` in a docstring is the same citation, and
+  `blueprint_bibliography` lists the cited entries with their "Cited from" backlinks; see
+  [BibTeX citations](#bibtex-citations).
+- Docstrings of embedded declarations rendered as Markdown (`src/VersoBlueprint/DocstringHtml.lean`,
+  `ExternalDeclRender.lean`): paragraphs, lists, code, emphasis, links and `$...$` math, where
+  upstream shows the docstring verbatim in a `<pre>` (kept for Markdown the renderer does not
+  handle: tables, raw HTML).
 - Two patches to the pinned `verso` (`patches/verso-chapter-anchors.patch`,
   `patches/verso-term-universes.patch`), applied to a consumer's `.lake/packages/verso` by
   `scripts/apply-verso-patches.py <path-to-verso>` (idempotent, hash-checked). A consuming
@@ -306,6 +311,10 @@ docstrings](#annotations-from-docstrings)), the bracketed citations `[Kol07]` an
 `[Kol07, Definition 29]` whose key is registered are the same inlines: the key is the text
 before the first comma, the locator the rest; and `[Atiyah's Resolution Theorem][Ati70]`, the
 form doc-gen4 also reads, is `{citeAs}`. A citation whose key is not registered stays as written.
+
+The docstring of an embedded declaration, rendered as Markdown in the node's panel, links its
+citations `[Kol07, Definition 29]` and `[text][Kol07]` the same way (with no hover preview; the
+panel is rendered before the previews are collected).
 
 In TeX output a citation is its text, `[Kol07, Definition 29]`.
 
