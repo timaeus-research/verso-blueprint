@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import Lean
 import VersoManual.Bibliography
+import VersoBlueprint.BibTeX
 import VersoBlueprint.Commands.Common
 import VersoBlueprint.Data
 import VersoBlueprint.Informal.Block.Model
@@ -30,31 +31,16 @@ def citeAssetBundle : Informal.Commands.BlueprintAssetBundle :=
 
 syntax (name := bib) "bib" ppSpace str : attr
 
-private def parseNameOrSimple (s : String) : Name :=
-  let s := s.trimAscii.toString
-  let n := s.toName
-  if n.isAnonymous then Name.mkSimple s else n
-
 private def parseBibLabel (s : String) : Name :=
-  parseNameOrSimple s
+  Resolve.parseBibLabel s
 
+@[inherit_doc Resolve.normalizeLabel]
 def normalizeLabel (label : String) : String :=
-  (parseBibLabel label).toString
+  Resolve.normalizeLabel label
 
-/--
-Stable slug used in bibliography fragment URLs and citation preview keys.
-
-This intentionally keeps the historical lowercase, hyphen-separated bibliography
-anchor form instead of `Informal.HtmlId.key`. Use the `HtmlId` encoder for
-opaque generated element ids; citation anchors are user-visible URL fragments.
--/
+@[inherit_doc Resolve.citationAnchorId]
 def citationAnchorId (label : String) : String :=
-  let base := normalizeLabel label
-  base.foldl (init := "") fun acc c =>
-    if c.isAlphanum then
-      acc.push c.toLower
-    else
-      acc.push '-'
+  Resolve.citationAnchorId label
 
 initialize bibExt : PersistentEnvExtension (Name × Name) (Name × Name) (Lean.NameMap Name) ←
   registerPersistentEnvExtension {
@@ -151,7 +137,7 @@ structure CiteConfig where
 section
 variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadError m] [MonadFileMap m]
 
-private def stringOrName : ValDesc m String := {
+def stringOrName : ValDesc m String := {
   description := "citation label (identifier or string)"
   signature := .String ∪ .Ident
   get := fun
@@ -298,6 +284,8 @@ structure CitationUse where
   summary : CitationSummary := {}
   kind : Option CitePartKind := none
   index : Option String := none
+  /-- The free-text locator of a `{cite KEY}[locator]` citation of a BibTeX entry. -/
+  locator : Option String := none
 deriving Inhabited, FromJson, ToJson
 
 /--
@@ -315,7 +303,8 @@ private def CitationUsageData.insertUnique (d : CitationUsageData) (u : Citation
       e.href == u.href
       && ToJson.toJson e.summary == ToJson.toJson u.summary
       && e.kind == u.kind
-      && e.index == u.index) then
+      && e.index == u.index
+      && e.locator == u.locator) then
     d
   else
     { d with uses := d.uses ++ [u] }
@@ -616,7 +605,134 @@ inline_extension Inline.bpCite (citations : List CiteItem) (style : CitationStyl
         | Option.none => pure <| wrapTarget core
         | some htmlNote => pure <| wrapTarget {{<span>{{core}} ", " {{htmlNote}}</span>}}
 
+/-! ### Citations of BibTeX entries
+
+`{cite KEY}[locator]` cites an entry of the registry of `VersoBlueprint.BibTeX`
+(`blueprint_bibliography_file`). It renders as `[tag, locator]` linked to the entry in the
+bibliography, with a hover preview of the entry, and is recorded as a use of the entry for the
+bibliography's "Cited from" list. -/
+
+/-- The data of a `{cite}` inline: the entry cited, with what the link shows and previews. -/
+structure BibCiteData where
+  /-- The key of the entry: `Kol07`. -/
+  key : String
+  /-- The entry's tag without brackets: `Kol07`, or `TSPA` for an entry keyed `Sta`. -/
+  tag : String
+  /-- The locator: `Definition 29`. -/
+  locator : Option String := none
+  /-- Text shown instead of the bracketed tag and locator: `Atiyah's Resolution Theorem` for a
+  citation written `[Atiyah's Resolution Theorem][Ati70]` in a docstring or `{citeAs Ati70}[Atiyah's
+  Resolution Theorem]` in prose. -/
+  text : Option String := none
+  /-- The entry as text. -/
+  plaintext : String
+  /-- The entry as HTML, the hover preview. -/
+  html : String
+deriving Inhabited, FromJson, ToJson, Quote
+
+/-- The text of the citation: `[Kol07, Definition 29]`, `[Kol07]`, or the text given. -/
+def BibCiteData.display (d : BibCiteData) : String :=
+  match d.text, d.locator with
+  | some text, _ => text
+  | none, some loc => s!"[{d.tag}, {loc}]"
+  | none, none => s!"[{d.tag}]"
+
+/-- The data of a `{cite}` inline of the entry `item` with the locator `locator`, or with the text
+`text` shown instead of the bracketed citation. -/
+def BibCiteData.ofItem (item : Informal.BibTeX.BibItem) (locator : Option String)
+    (text : Option String := none) : BibCiteData :=
+  { key := item.key, tag := item.tag,
+    locator := normalizedLocatorIndex (locator.map Informal.BibTeX.normalizeLocator),
+    text := normalizedLocatorIndex (text.map Informal.BibTeX.normalizeLocator),
+    plaintext := item.plaintext, html := item.html }
+
+/-- The hover-preview manifest key of a citation: citations with the same key, locator and text
+share the entry. -/
+def bibCitePreviewKey (d : BibCiteData) : String :=
+  let locatorKey := d.locator.map Informal.HoverRender.previewKey |>.getD "none"
+  match d.text with
+  | some text => s!"bp-bibcite-{citationAnchorId d.key}-{locatorKey}-{Informal.HoverRender.previewKey text}"
+  | none => s!"bp-bibcite-{citationAnchorId d.key}-{locatorKey}"
+
+/-- The title of the hover preview of a citation: `[Kol07, Definition 29]`, with the text given
+first when there is one. -/
+def bibCitePreviewTitle (d : BibCiteData) : String :=
+  match d.text with
+  | some text => s!"{text} [{d.tag}{(d.locator.map (", " ++ ·)).getD ""}]"
+  | none => d.display
+
+@[inherit_doc Informal.TraversalIndex.bibEntryHref?]
+def bibEntryHref? (st : TraverseState) (key : String) : Option String :=
+  Informal.TraversalIndex.bibEntryHref? st key
+
+open Verso Doc Elab Genre Manual in
+inline_extension Inline.bibCite (data : BibCiteData) where
+  data := toJson data
+  traverse id data _contents := do
+    let some cfg ← Informal.ExtensionDecode.decode? (α := BibCiteData) data
+        (fun _ => "Malformed data in Inline.bibCite.traverse")
+      | return none
+    let ctxt ← read
+    let _ ← Verso.Genre.Manual.externalTag id ctxt.path s!"--bp-bibcite-{citationAnchorId cfg.key}"
+    let href? := (← get).externalTags[id]? |>.map (·.relativeLink)
+    let summary := usageSummary ctxt
+    modify fun st =>
+      let st := Informal.TraversalIndex.BibtexCitationPreviews.saveData st
+        (bibCitePreviewKey cfg) (toJson cfg)
+      let st := Informal.TraversalIndex.CitationUsages.saveId st cfg.key id
+      match href? with
+      | some href =>
+        Informal.TraversalIndex.CitationUsages.modifyData st cfg.key
+          (updateCitationUsageData { href, summary, locator := cfg.locator })
+      | Option.none => st
+    pure none
+  extraCss := citeAssetBundle.css
+  extraJs := citeAssetBundle.js
+  usePackages := Informal.TeX.standardMathUsePackages
+  toTeX :=
+    open Verso.Output.TeX in
+    some <| fun _go _id data _content => do
+      let some cfg ← Informal.ExtensionDecode.decode? (α := BibCiteData) data
+          (fun _ => "Malformed data in Inline.bibCite.toTeX")
+        | pure .empty
+      pure (.text cfg.display)
+  toHtml :=
+    open Verso.Doc.Html in
+    open Verso.Output.Html in
+    some <| fun _goI id data _content => do
+      let some cfg ← Informal.ExtensionDecode.decode? (α := BibCiteData) data
+          (fun _ => "Malformed data in Inline.bibCite.toHtml")
+        | pure .empty
+      let st ← HtmlT.state
+      let inPreviewRender ← Informal.HoverRender.inInlinePreviewRender
+      let txt := cfg.display
+      -- No `title` attribute: the hover preview shows the entry.
+      let linkNode : Output.Html :=
+        match bibEntryHref? st cfg.key with
+        | some href => {{<a href={{href}} class="bp_bibcite">{{.text true txt}}</a>}}
+        | Option.none => {{<span class="bp_bibcite">{{.text true txt}}</span>}}
+      let node :=
+        if inPreviewRender then
+          linkNode
+        else
+          let previewTarget := Informal.HoverRender.InlinePreviewTarget.manifestBacked
+            (bibCitePreviewKey cfg) (bibCitePreviewTitle cfg)
+          Informal.HoverRender.inlinePreviewTargetNode linkNode previewTarget
+      match st.externalTags[id]? |>.map (·.htmlId.toString) with
+      | some anchorId => pure {{<span id={{anchorId}}>{{node}}</span>}}
+      | Option.none => pure node
+
 end Informal.Cite
+
+namespace Informal.TraversalIndex.BibtexCitationPreviews
+
+/-- Decode every BibTeX-citation preview store entry, preserving per-entry decode errors. -/
+def entries (state : Verso.Genre.Manual.TraverseState) :
+    Array (Except Informal.TraversalIndex.DecodeError
+      (Informal.TraversalIndex.StoredEntry Informal.Cite.BibCiteData)) :=
+  Informal.TraversalIndex.decodeStoreEntries state domainName
+
+end Informal.TraversalIndex.BibtexCitationPreviews
 
 namespace Informal.TraversalIndex.CitationPreviews
 
@@ -672,5 +788,58 @@ def citet : RoleExpanderOf Cite.CiteConfig
 @[role]
 def citehere : RoleExpanderOf Cite.CiteConfig
   | config, extra => citeRoleImpl .here config extra
+
+
+/-- The argument of `{cite}`: the key of a registered BibTeX entry, as an identifier or a string. -/
+structure BibCiteConfig where
+  key : Verso.ArgParse.WithSyntax String
+
+section
+variable [Monad m] [MonadInfoTree m] [MonadLiftT CoreM m] [MonadEnv m] [MonadError m] [MonadFileMap m]
+
+instance : FromArgs BibCiteConfig m where
+  fromArgs := BibCiteConfig.mk <$> .positional `key (.withSyntax Cite.stringOrName)
+
+end
+
+/-- The `{cite}` inline of the entry `item` with the locator `locator`, or with the text `text`
+shown instead of the bracketed citation, as a term. -/
+def mkBibCiteTerm (item : Informal.BibTeX.BibItem) (locator : Option String)
+    (text : Option String := none) : DocElabM Term :=
+  ``(Verso.Doc.Inline.other
+    (Informal.Cite.Inline.bibCite $(quote (Cite.BibCiteData.ofItem item locator text))) #[])
+
+/--
+`{cite KEY}[locator]` cites the entry `KEY` of the BibTeX bibliography (`blueprint_bibliography_file`):
+`{cite Kol07}[Definition 29]` renders as `[Kol07, Definition 29]`, linked to the entry in the
+bibliography and previewing it; `{cite Kol07}[]` as `[Kol07]`. The locator is the content as
+plain text. An unknown key is an error.
+-/
+@[role]
+def cite : RoleExpanderOf BibCiteConfig
+  | cfg, contents => do
+    let some item := Informal.BibTeX.lookup? (← getEnv) cfg.key.val
+      | throwErrorAt cfg.key.syntax "Unknown bibliography key '{cfg.key.val}' (register the \
+          bibliography with blueprint_bibliography_file)"
+    let env ← getEnv
+    let locator := String.join (contents.toList.map fun c => Verso.Doc.Elab.inlineToString env c.raw)
+    mkBibCiteTerm item (some locator)
+
+/--
+`{citeAs KEY}[text]` cites the entry `KEY` with `text` as the link's text, where `{cite KEY}[]`
+would show the bracketed tag: `{citeAs Ati70}[Atiyah's Resolution Theorem]`. The hover preview
+is titled `text [Ati70]`.
+-/
+@[role]
+def citeAs : RoleExpanderOf BibCiteConfig
+  | cfg, contents => do
+    let some item := Informal.BibTeX.lookup? (← getEnv) cfg.key.val
+      | throwErrorAt cfg.key.syntax "Unknown bibliography key '{cfg.key.val}' (register the \
+          bibliography with blueprint_bibliography_file)"
+    let env ← getEnv
+    let text := String.join (contents.toList.map fun c => Verso.Doc.Elab.inlineToString env c.raw)
+    if text.trimAscii.isEmpty then
+      throwError "\{citeAs}: give the text to show, or cite with \{cite {cfg.key.val}}[]"
+    mkBibCiteTerm item none (some text)
 
 end Informal

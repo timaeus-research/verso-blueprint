@@ -7,6 +7,7 @@ Author: Emilio J. Gallego Arias
 import VersoManual
 import VersoSlides
 import Verso.Doc.Elab
+import VersoBlueprint.TraversalIndex
 import VersoBlueprint.Informal.Block.Assets
 import VersoBlueprint.Informal.LeanCodePreview
 import VersoBlueprint.Graft.Assets
@@ -93,7 +94,7 @@ private def renderLeanCodePreviewBody?
       | .inlineBlocks blocks _sourceLocation => some <$> renderManualBlocks goB blocks
       | .externalDecl decl =>
         pure <| some <| Informal.ExternalCode.renderPreviewHtml #[decl]
-          (declHref := Informal.Resolve.resolveCanonicalDeclHref? state)
+          (declHref := Informal.TraversalIndex.resolveExternalDeclLinkHref? state)
 
 private def renderLeanCodeBodies
     [Monad m]

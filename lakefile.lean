@@ -7,6 +7,8 @@ require «verso-slides» from git "https://github.com/leanprover/verso-slides"@"
 -- blueprint project resolves a single ProofWidgets. verso/verso-slides stay at v4.33.0: upstream
 -- publishes no v4.33.1 tag and the Lean v4.33.1 patch release is source-compatible.
 require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.108"
+-- BibTeX parsing and formatting for `blueprint_bibliography_file` (brings fgdorais/lean4-unicode-basic).
+require BibtexQuery from git "https://github.com/dupuisf/BibtexQuery"@"852edafa268eb038a7158551fd580ee8433847b0"
 
 package VersoBlueprint where
   precompileModules := false
@@ -52,6 +54,7 @@ lean_lib VersoBlueprintTests where
     `VersoBlueprintTests.BlueprintAssets,
     `VersoBlueprintTests.BlueprintAutoDeps,
     `VersoBlueprintTests.BlueprintAttribute,
+    `VersoBlueprintTests.BlueprintBibtex,
     `VersoBlueprintTests.BlueprintCodeRenderMatrix,
     `VersoBlueprintTests.BlueprintDeclLinks,
     `VersoBlueprintTests.BlueprintImportedDuplicates.Direct,

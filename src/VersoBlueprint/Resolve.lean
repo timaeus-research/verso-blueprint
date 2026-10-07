@@ -60,7 +60,34 @@ declaration, except that a definition node takes precedence over a theorem-like 
 -/
 def canonicalDeclDomainName : Name := Name.mkSimple "Informal.Block.canonicalDecl"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
+
+/-- A bibliography label as a `Name`: `hover.cite` as the hierarchical name, a label that is not
+one as a simple name. -/
+def parseBibLabel (s : String) : Name :=
+  let s := s.trimAscii.toString
+  let n := s.toName
+  if n.isAnonymous then Name.mkSimple s else n
+
+/-- A bibliography label normalized through `parseBibLabel`. -/
+def normalizeLabel (label : String) : String :=
+  (parseBibLabel label).toString
+
+/--
+Stable slug used in bibliography fragment URLs and citation preview keys.
+
+This intentionally keeps the historical lowercase, hyphen-separated bibliography
+anchor form instead of `Informal.HtmlId.key`. Use the `HtmlId` encoder for
+opaque generated element ids; citation anchors are user-visible URL fragments.
+-/
+def citationAnchorId (label : String) : String :=
+  let base := normalizeLabel label
+  base.foldl (init := "") fun acc c =>
+    if c.isAlphanum then
+      acc.push c.toLower
+    else
+      acc.push '-'
 def citationPreviewDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.previews"
+def bibtexCitationPreviewDomainName : Name := Name.mkSimple "Informal.Inline.bibCite.previews"
 def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
 /--
 Domain that stores declaration anchors for inline Lean code.

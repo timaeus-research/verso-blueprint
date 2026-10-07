@@ -36,6 +36,17 @@ happens here, on the branch `timaeus/v4.33.1`; consumers pin a commit of that br
 - Declaration links (`src/VersoBlueprint/ExternalDeclRender.lean`, `Informal/DeclRef.lean`): the
   constants in rendered declaration code link to the node that presents them, and the inline role
   `{decl}` links a declaration named in prose; see [Declaration links](#declaration-links).
+- BibTeX citations (`src/VersoBlueprint/BibTeX.lean`, `Cite.lean`, `Commands/Bibliography.lean`,
+  `SourceAnnotations.lean`, `MarkdownTerms.lean`, `DocstringHtml.lean`):
+  `blueprint_bibliography_file "references.bib"` registers a BibTeX file, formatted by BibtexQuery
+  as doc-gen4 formats an API documentation's references page; `{cite Kol07}[Definition 29]` cites
+  an entry in prose, `[Kol07, Definition 29]` in a docstring is the same citation, and
+  `blueprint_bibliography` lists the cited entries with their "Cited from" backlinks; see
+  [BibTeX citations](#bibtex-citations).
+- Docstrings of embedded declarations rendered as Markdown (`src/VersoBlueprint/DocstringHtml.lean`,
+  `ExternalDeclRender.lean`): paragraphs, lists, code, emphasis, links and `$...$` math, where
+  upstream shows the docstring verbatim in a `<pre>` (kept for Markdown the renderer does not
+  handle: tables, raw HTML).
 - Two patches to the pinned `verso` (`patches/verso-chapter-anchors.patch`,
   `patches/verso-term-universes.patch`), applied to a consumer's `.lake/packages/verso` by
   `scripts/apply-verso-patches.py <path-to-verso>` (idempotent, hash-checked). A consuming
@@ -239,6 +250,84 @@ blueprint no longer presents. A code span that is not a Lean name (`h : Y ⟶ X`
 error unless the name is given as argument. The role registers no dependency (use `{uses}` for
 that). In TeX the role is plain inline code. The tests are
 `tests/VersoBlueprintTests/BlueprintDeclLinks.lean`.
+
+## BibTeX citations
+
+Upstream's citations are Lean values of Verso's `Citable` (`[bib "label"]`, `{Informal.citep}`),
+which has no book or miscellaneous kind and no reader of BibTeX. A project that keeps its sources
+in a BibTeX file, as one does for doc-gen4's references page, cites that file instead.
+
+### Registering the file
+
+```lean
+import VersoBlueprint
+
+blueprint_bibliography_file "../../references.bib"
+```
+
+The path is relative to the directory of the file holding the command. The entries are
+registered in a persistent environment extension, so the command goes in a module that every
+citing chapter imports (a registry module). Lake does not see that the module reads the file:
+declare the file as an `input_file` and a `needs` of the library holding the module, so that a
+change to the file rebuilds the registry and the chapters:
+
+```toml
+[[input_file]]
+name = "references"
+path = "../references.bib"
+text = true
+
+[[lean_lib]]
+name = "BlueprintReferences"
+roots = ["Blueprint.References"]
+needs = ["references"]
+```
+
+`blueprint_bibliography_bibtex "@book{...}"` registers BibTeX text itself (for tests). A key
+registered twice is an error; two entries with the same generated tag, or two keys differing only
+in case (their anchors coincide), are warnings.
+
+BibtexQuery reads `@type{key, field = {value}, ...}` with values in braces or bare numbers, keys of
+ASCII letters, digits, `:`, `-` and `_`, accents as TeX commands or Unicode; not `@string`, `#`
+concatenation or quoted values. Its parser stops silently at the first malformed entry; the
+command reports that as an error. Each entry gets an alpha-style tag from its authors and year
+(`Kol07`; `BM97`; `BM97a`, `BM97b` when two coincide; `TSPA` for `{{The Stacks Project Authors}}`),
+the entry's HTML in the `unsrt` style, and its plain text.
+
+### Citing
+
+`{cite Kol07}[Definition 29]` renders as `[Kol07, Definition 29]`, linked to the entry in the
+bibliography, with a hover preview titled `[Kol07, Definition 29]` showing the entry;
+`{cite Kol07}[]` renders as `[Kol07]`. The text in brackets is the entry's *tag*, not the key: an entry keyed `Sta` whose
+tag is `TSPA` renders as `[TSPA, Tag 01WQ]`. The content of the role is the locator, as plain
+text with its white space normalized. One key per role; an unknown key is an error. A key that
+is not a Lean identifier is given as a string: `{cite "a-b"}[]`.
+
+`{citeAs Ati70}[Atiyah's Resolution Theorem]` shows the content as the link's text instead of the
+bracketed tag; its hover preview is titled `Atiyah's Resolution Theorem [Ati70]`.
+
+In a docstring's "Relation to the source." items (see [Annotations from
+docstrings](#annotations-from-docstrings)), the bracketed citations `[Kol07]` and
+`[Kol07, Definition 29]` whose key is registered are the same inlines: the key is the text
+before the first comma, the locator the rest; and `[Atiyah's Resolution Theorem][Ati70]`, the
+form doc-gen4 also reads, is `{citeAs}`. A citation whose key is not registered stays as written.
+
+The docstring of an embedded declaration, rendered as Markdown in the node's panel, links its
+citations `[Kol07, Definition 29]` and `[text][Kol07]` the same way (with no hover preview; the
+panel is rendered before the previews are collected).
+
+In TeX output a citation is its text, `[Kol07, Definition 29]`.
+
+### The bibliography
+
+`{blueprint_bibliography}` adds the "Blueprint Bibliography" part, listing the `[bib]` entries and
+the BibTeX entries that the document cites (an entry nothing cites is left out;
+`{blueprint_bibliography_all}` lists every registered entry). A BibTeX entry shows its tag, the
+formatted entry, and "Cited from", the links to its citations with each citation's locator.
+Entries are ordered as BibtexQuery sorts them (author, year, title), after the `[bib]` entries.
+The anchor of the entry `Kol07` is `bp-bib-kol07`.
+
+Tests: `tests/VersoBlueprintTests/BlueprintBibtex.lean` (fixture `tests/VersoBlueprintTests/fixtures/sample.bib`).
 
 ## Consuming
 
