@@ -118,6 +118,76 @@ This tiny document exercises highlighted-code startup asset normalization.
         appearsBefore out "class=\"bp_build_metadata\"" "class=\"authors\""
   | none => false
 
+private def unavailableBuildMetadata : Informal.PreviewManifest.BuildMetadata := {
+  compiledAt := "unknown", commit := "", subject := "unknown"
+  leanToolchain := " ", blueprintVersion := "unknown"
+  mathlibVersion := some "unknown"
+  upstreamBlueprint := some { commit := "unknown", subject := "" }
+}
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  let html := Informal.PreviewManifest.buildMetadataHtmlString unavailableBuildMetadata
+  !hasSubstr html "unknown" && !hasSubstr html "bp_build_metadata_item" &&
+    !hasSubstr html "Project" && !hasSubstr html "Mathlib"
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  let metadata := { unavailableBuildMetadata with
+    leanToolchain := "leanprover/lean4:v4.33.0"
+    projectRepositoryUrl := some "https://example.org/project"
+    projectCommitUrl := some "https://example.org/project/commit/full"
+    blueprintVersion := "abc123"
+    blueprintRepositoryUrl := some ""
+    subject := "A known subject"
+  }
+  let html := Informal.PreviewManifest.buildMetadataHtmlString metadata
+  !hasSubstr html "unknown" && !hasSubstr html "Compiled" &&
+    !hasSubstr html "Mathlib" && !hasSubstr html "Upstream" &&
+    hasSubstr html "A known subject" && hasSubstr html "abc123" &&
+    hasSubstr html "leanprover/lean4:v4.33.0" &&
+    hasSubstr html "href=\"https://example.org/project\"" &&
+    hasSubstr html "href=\"https://example.org/project/commit/full\"" &&
+    !hasSubstr html "href=\"\""
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  let sha := "0123456789abcdef0123456789abcdef01234567"
+  let raw := sha ++ "@0123456789ab"
+  let href := "https://example.org/mathlib/commit/" ++ sha
+  let metadata := { unavailableBuildMetadata with
+    mathlibVersion := some raw
+    mathlibCommitUrl := some href
+  }
+  let html := Informal.PreviewManifest.buildMetadataHtmlString metadata
+  hasSubstr html ">0123456789ab</code>" && !hasSubstr html raw &&
+    hasSubstr html ("href=\"" ++ href ++ "\"") && metadata.mathlibVersion == some raw
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  ["v4.33.0@0123456789ab", "0123456789abcdef0123456789abcdef01234567@abcdef012345",
+    "0123456789abcdef0123456789abcdef0123456x@0123456789ab"].all fun version =>
+    let html := Informal.PreviewManifest.buildMetadataHtmlString {
+      unavailableBuildMetadata with mathlibVersion := some version
+    }
+    hasSubstr html (">" ++ version ++ "</code>")
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  let html := Informal.PreviewManifest.buildMetadataHtmlString {
+    unavailableBuildMetadata with
+      mathlibVersion := none
+      mathlibRepositoryUrl := some "https://example.org/mathlib"
+  }
+  hasSubstr html "href=\"https://example.org/mathlib\"" &&
+    hasSubstr html ">Mathlib</a>" && !hasSubstr html "unknown" &&
+    !hasSubstr html "bp_build_metadata_commit"
+
 private partial def freshBlueprintMainWrapperRoot (testName : String) : IO System.FilePath := do
   let suffix ← IO.rand 0 1000000000000
   let cwd ← IO.currentDir

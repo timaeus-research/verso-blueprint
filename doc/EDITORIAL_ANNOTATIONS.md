@@ -14,7 +14,7 @@ hover information retain their usual rendering. There is no HTML post-processing
   outcomes. It has no “accepted,” “resolved,” or approval option.
 - `:::clarification` renders **Clarification**. Explain a settled convention
   where the paper is underspecified; state the convention in ordinary mathematics.
-- `:::correction` renders **Correction**. Explain an established correction and
+- `:::correction` renders **Correction**. Explain a correction and
   link to the counterexample, exact-negation corollary, and corrected statement.
   The label itself supplies no evidence and does not certify the linked proofs.
 - `:::outOfScope` renders **Out of scope**. Explain deliberately omitted material
@@ -27,8 +27,13 @@ Do not exclude prerequisites of a result still claimed in scope: supply them or
 explicitly narrow coverage of the affected results too. Scope notes do not hide
 nested TODOs or discharge correspondence obligations.
 A faithful statement may deliberately have a sorried proof: missing proofs alone
-use existing proof-status tracking and do not require a TODO. Unproved equivalence
-or correction evidence still leaves correspondence unsettled, so retain a TODO.
+use existing proof-status tracking and do not require a TODO. In a statement-first
+document, this also applies to fully specified equivalence and correction claims.
+Explicit witnesses, their hypotheses, the original proposition, its exact
+negation, and the corrected statement must still be present where required.
+Omitted proofs remain correspondence proof obligations, not verified evidence;
+say that their formal proofs are omitted. Missing claims or witnesses and
+unresolved assumptions or conclusions remain statement TODOs.
 
 Migration: replace `formalizationGap` with `formalizationTodo` and rewrite the
 body using the neutral current-state/possible-resolutions convention above.
@@ -48,8 +53,8 @@ The paper writes a superscript star; Lean uses the suffix `star`.
 
 :::formalizationTodo
 The paper states a local threshold; Lean currently states a global threshold.
-State the paper's local result, prove equivalence under its assumptions, or
-establish a counterexample and exact negation supporting a corrected result.
+State the paper's local result, supply an equivalence lemma under its assumptions,
+or give an explicit counterexample and exact negation supporting a corrected result.
 :::
 ::::
 ````
@@ -60,20 +65,25 @@ Nested TODOs additionally mark the enclosing node's header “Formalisation TODO
 A proof containing a TODO is not folded. The TODO body remains visible, without
 repeated proof-status boilerplate.
 
-A formalisation TODO means missing work in the anchor, not an error in the paper.
+A formalisation TODO means missing statement work in the blueprint, not an error in the paper.
 Name the omitted claim, altered hypothesis, or missing lemma at the affected
 statement or application. An auxiliary definition or a conditional theorem is
 not itself a gap merely because it differs from the paper's presentation.
 Explain such mathematics in ordinary prose; mark a gap where an application
-needs a hypothesis or identification that has not been established.
+needs a hypothesis or identification whose required statement is missing or
+whose mathematical scope remains unresolved.
 
 Mathematical explanations stay in mathematical prose, and proof explanations in
-proof nodes. A nontrivial alternative formulation requires a proved equivalence
+proof nodes. A nontrivial alternative formulation requires an equivalence
 lemma, including assumptions and domains. An assertion that the paper is false
-requires a counterexample and a corollary proving the original claim's exact
-negation. These are ordinary linked mathematical nodes, optionally in a
+requires an explicit counterexample and a corollary asserting the original
+claim's exact negation. These are ordinary linked mathematical nodes, optionally in a
 discrepancy appendix; a correction annotation only explains and links them.
-Until those obligations are established, retain the TODO warning. A substantive
+Their proofs must establish the claimed correspondence before it can be called
+verified. If the complete statements deliberately have omitted proofs, use their
+proof status rather than a statement TODO; do not describe the correction as
+verified. Until the statements, witnesses and source scope are settled, retain
+the TODO warning. A substantive
 change of assumptions or conclusions is not a clarification merely because an
 author chose it. Meta annotations cannot serve as
 evidence that the formalization corresponds to the paper.

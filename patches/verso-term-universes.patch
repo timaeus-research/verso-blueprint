@@ -1,0 +1,12 @@
+diff --git a/src/verso-manual/VersoManual/InlineLean.lean b/src/verso-manual/VersoManual/InlineLean.lean
+--- a/src/verso-manual/VersoManual/InlineLean.lean
++++ b/src/verso-manual/VersoManual/InlineLean.lean
+@@ -411,7 +411,7 @@ meta def leanTerm : CodeBlockExpanderOf LeanInlineConfig
+                 throwErrorAt s "Type contains metavariables: {t}"
+               pure t
+ 
+-          let e ← Elab.Term.elabTerm (catchExPostpone := true) stx expectedType
++          let e ← leveller <| Elab.Term.elabTerm (catchExPostpone := true) stx expectedType
+           Term.synthesizeSyntheticMVarsNoPostponing
+           let _ ← Term.levelMVarToParam (← instantiateMVars e)
+ 

@@ -147,4 +147,84 @@ private def panelIndicatorHtml (label : Name) (source : BlockCodeData) : String 
       headingHealth.missingDecls == 0 && nodeHealth.missingDecls == 0 do
     throw <| IO.userError "Associated declarations disagreed between heading and graph status"
 
+-- Several code blocks may share one label, with prose between them.
+open Verso Genre Manual
+
+private def repeatedImpls : ExtensionImpls := extension_impls%
+
+#docs (Manual) repeatedCodeDoc "Repeated code ownership" :=
+:::::::
+:::theorem "repeated.forward"
+A helper and its theorem may have separate code panels.
+:::
+
+```lean "repeated.forward"
+open Nat
+```
+
+```lean "repeated.forward"
+def repeatedForwardHelper : Nat := 0
+```
+
+The proof is displayed after the setup.
+
+```lean "repeated.forward"
+theorem repeatedForwardClaim :
+    repeatedForwardHelper = 0 := by
+  sorry
+```
+
+:::theorem "repeated.reverse"
+A theorem can precede a separate definition.
+:::
+
+```lean "repeated.reverse" (autoDeps := true)
+theorem repeatedReverseClaim : True := by
+  have := repeatedForwardClaim
+  sorry
+```
+
+```lean "repeated.reverse" (autoDeps := true)
+def repeatedReverseHelper :
+    Fin (repeatedForwardHelper + 1) := 0
+```
+
+:::theorem "repeated.theorems"
+A later incomplete theorem changes the aggregate status.
+:::
+
+```lean "repeated.theorems"
+theorem repeatedProvedClaim : True := by trivial
+```
+
+```lean "repeated.theorems"
+theorem repeatedLaterClaim : True := by sorry
+```
+:::::::
+
+private def repeatedLogger : Logger IO where
+  log _ _ _ := pure ()
+  errors := pure #[]
+  warnings := pure #[]
+
+/-- info: true -/
+#guard_msgs in
+#eval show IO Bool from do
+  let (html, st) ← renderManualDocHtmlStringAndState repeatedImpls repeatedCodeDoc
+  let forward := TraversalIndex.InlineCode.blocks st `«repeated.forward»
+  let reverse := TraversalIndex.InlineCode.blocks st `«repeated.reverse»
+  let files ← buildManualPreviewDataFiles repeatedImpls repeatedCodeDoc
+  let exported := (toJson files.manifest).compress
+  let ids := (html.splitOn " id=\"").drop 1 |>.map (fun s => (s.splitOn "\"").head!)
+  for (name, ok) in #[
+     ("unique rendered ids", ids.eraseDups.length == ids.length),
+     ("forward declarations", forward.definedDefs.size == 1 && forward.definedTheorems.size == 1),
+     ("reverse declarations", reverse.definedDefs.size == 1 && reverse.definedTheorems.size == 1),
+     ("all node badges", countSubstr html "bp_code_link_status_warning" == 3),
+     ("no false complete badge", !hasSubstr html "bp_code_link_status_proved"),
+     ("exported declarations", #["repeatedForwardClaim", "repeatedForwardHelper",
+       "repeatedReverseClaim", "repeatedReverseHelper"].all (hasSubstr exported))] do
+    unless ok do throw <| IO.userError s!"Repeated-code regression failed: {name}"
+  return true
+
 end Verso.VersoBlueprintTests.BlueprintCodeRenderMatrix

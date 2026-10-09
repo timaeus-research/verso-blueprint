@@ -492,16 +492,39 @@ private def sourceSpanPreviewText (span : Source.Span) : String :=
   else
     summary
 
-private def renderSourceSpanPreview (span : Source.Span) : Verso.Output.Html :=
+/-- Resolve a PDF URL without changing its recorded provenance path.
+Only HTTP(S), root-relative, and ordinary relative URLs are linkable. -/
+def sourcePdfHref? (base path : String) : Option String :=
+  Reader.sourceHref? base path
+
+/-- Verso's page-level `<base>` already makes relative source URLs site-root-relative.
+Explicit reader source bases are preserved. -/
+def sourceLinkBase (reader : Option Reader.Context) (_pageDepth : Nat) : String :=
+  reader.map (·.sourceBaseUrl) |>.getD ""
+
+private def renderSourceSpanPreview (base : String) (span : Source.Span) : Verso.Output.Html :=
   open Verso.Output.Html in
-  let summary := sourceSpanPreviewText span
+  let pdfLink := span.pdf.bind fun pdf => (sourcePdfHref? base pdf.path).map fun href =>
+    {{<a class="bp_source_ref_pdf" href={{href}} target="_blank" rel="noopener noreferrer"
+        data-bp-source-pdf={{pdf.path}}>
+      {{.text true (match span.page with
+        | some page => s!"Page {page} (PDF)"
+        | none => "Source PDF")}}
+    </a>}}
+  let details := if pdfLink.isSome then
+    sourceSpanSummary { span with page := none, pdf := none }
+  else sourceSpanPreviewText { span with pdf := none }
   {{
     <li class="bp_source_ref_panel_span">
-      <span class="bp_source_ref_panel_span_text">{{.text true summary}}</span>
+      {{pdfLink.getD .empty}}
+      {{if details.isEmpty then .empty else
+        {{<span class="bp_source_ref_panel_span_text">
+          {{.text true ((if pdfLink.isSome then " — " else "") ++ details)}}
+        </span>}}}}
     </li>
   }}
 
-private def renderSourceRefPreviewItem (sourceRef : Source.Ref) : Verso.Output.Html :=
+private def renderSourceRefPreviewItem (base : String) (sourceRef : Source.Ref) : Verso.Output.Html :=
   open Verso.Output.Html in
   let summary := sourceRefSummary sourceRef
   let title := sourceRefTitle sourceRef
@@ -513,7 +536,7 @@ private def renderSourceRefPreviewItem (sourceRef : Source.Ref) : Verso.Output.H
         </li>
       }}]
     else
-      sourceRef.spans.map renderSourceSpanPreview
+      sourceRef.spans.map (renderSourceSpanPreview base)
   {{
     <li class="bp_source_ref_panel_item"
         title={{title}}
@@ -529,13 +552,13 @@ private def renderSourceRefPreviewItem (sourceRef : Source.Ref) : Verso.Output.H
     </li>
   }}
 
-private def renderSourceRefPreview (sourceRefs : Array Source.Ref) : Verso.Output.Html :=
+private def renderSourceRefPreview (sourceRefs : Array Source.Ref) (base : String) : Verso.Output.Html :=
   open Verso.Output.Html in
   let chipText := sourceRefsChipText sourceRefs
   let chipTitle := sourceRefsChipTitle sourceRefs
   let panelTitle := sourceRefsPanelTitle sourceRefs
   let panelMeta := sourceRefsPanelMeta sourceRefs
-  let previewItems := sourceRefs.map renderSourceRefPreviewItem
+  let previewItems := sourceRefs.map (renderSourceRefPreviewItem base)
   {{
     <div class="bp_relation_wrap bp_source_ref_wrap">
       <button type="button"
@@ -569,17 +592,18 @@ private def renderSourceRefPreview (sourceRefs : Array Source.Ref) : Verso.Outpu
     </div>
   }}
 
-def renderSourceHeaderExtra? (sourceRefs : Array Source.Ref) : Option HeaderExtra :=
+def renderSourceHeaderExtra? (sourceRefs : Array Source.Ref) (base : String := "") : Option HeaderExtra :=
   if sourceRefs.isEmpty then
     none
   else
-    some <| HeaderExtra.source (renderSourceRefPreview sourceRefs)
+    some <| HeaderExtra.source (renderSourceRefPreview sourceRefs base)
 
-private def HeaderExtras.withSourceRefs (extras : HeaderExtras) (sourceRefs : Array Source.Ref) :
+private def HeaderExtras.withSourceRefs (extras : HeaderExtras) (sourceRefs : Array Source.Ref)
+    (base : String) :
     HeaderExtras :=
   match extras.source? with
   | some _ => extras
-  | none => { extras with source? := renderSourceHeaderExtra? sourceRefs }
+  | none => { extras with source? := renderSourceHeaderExtra? sourceRefs base }
 
 private def renderOwnerMetadataItem (data : BlockData) : Verso.Output.Html :=
   open Verso.Output.Html in
@@ -795,6 +819,7 @@ def renderInformalBlockHtml (data : BlockData) (ctx : InformalBlockRenderContext
     | true => .empty
     | false => renderStatementMetadataPanel data
   let headerExtras := ctx.headerExtras.withSourceRefs ctx.sourceRefs
+    (sourceLinkBase data.readerContext 0)
   let headerExtras := if data.hasFormalizationTodo then
     let warning := HeaderExtra.custom `correspondence Editorial.correspondenceWarning
     { headerExtras with custom := headerExtras.custom.push warning }

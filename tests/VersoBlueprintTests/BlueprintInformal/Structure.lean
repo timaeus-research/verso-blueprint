@@ -17,6 +17,68 @@ namespace Verso.VersoBlueprintTests.BlueprintInformal.Structure
 
 private def manualImpls : ExtensionImpls := extension_impls%
 
+/-- error: No registered role `blueprintMissingScopeProbe`. -/
+#guard_msgs in
+#docs (Manual) failedBodyScopeDoc "Failed Body Scope" :=
+:::::::
+:::definition "scope.prior"
+Previously completed node.
+:::
+
+:::definition "scope.failed"
+{blueprintMissingScopeProbe}[Invalid body]
+:::
+
+:::definition "scope.sibling"
+Valid sibling body using {uses "scope.prior"}[].
+:::
+:::::::
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show CoreM Bool from do
+    let state ← currentState
+    pure <| state.activeDirective.isNone &&
+      state.data.contains (Name.mkSimple "scope.prior") &&
+      !(state.data.contains (Name.mkSimple "scope.failed")) &&
+      (state.data.get? (Name.mkSimple "scope.sibling")).any
+        (fun node => node.statement.any (fun body => !body.previewBlocks.isEmpty &&
+          body.deps.any (fun dep => dep.label == Name.mkSimple "scope.prior")))
+
+elab "failedRetainedBlueprintBodyBlock" : term =>
+  throwError "retained Blueprint body failed"
+
+@[code_block]
+def failedRetainedBodyProbe : Verso.Doc.Elab.CodeBlockExpanderOf Unit
+  | _, _ => `(failedRetainedBlueprintBodyBlock)
+
+-- Preview compilation also reports a generated declaration name, so assert
+-- recovery below rather than pinning that unstable secondary diagnostic.
+#guard_msgs (drop error) in
+#docs (Manual) failedRetainedBodyScopeDoc "Failed Retained Body Scope" :=
+:::::::
+:::definition "scope.retained.failed"
+```failedRetainedBodyProbe
+probe
+```
+:::
+
+:::definition "scope.retained.sibling"
+Valid sibling after preview failure.
+:::
+:::::::
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show CoreM Bool from do
+    let state ← currentState
+    pure <| state.activeDirective.isNone &&
+      !(state.data.contains (Name.mkSimple "scope.retained.failed")) &&
+      (state.data.get? (Name.mkSimple "scope.retained.sibling")).any
+        (fun node => node.statement.any (fun body => !body.previewBlocks.isEmpty))
+
 elab "retainedBlueprintBodyBlock" : term => do
   logInfo "retained Blueprint body elaborated"
   Lean.Elab.Term.elabTerm

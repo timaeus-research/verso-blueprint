@@ -63,9 +63,17 @@ private partial def inlineText : Doc.Inline Manual → String
     String.join (xs.toList.map inlineText)
   | .image alt _ => alt
 
-private def enrich (input : Input) (data : BlockOccurrence) : BlockOccurrence := Id.run do
-  let mut identity : Option PaperIdentity := none
+/-- Attach reader links without rewriting source spans or inventing paper identities.
+The reader-specific `spanOnly` branch builds a `#page=` destination from the first
+source page label when a whole-document URL is available. Callers using that
+branch must supply labels matching physical PDF page indices; this is not a
+guarantee of the generic `Source.Span` schema. Authored PDF span paths are kept
+separately and remain unchanged. -/
+def enrich (input : Input) (data : BlockOccurrence) : BlockOccurrence := Id.run do
+  let mut identity : Option PaperIdentity := data.paperIdentity
   if let some entry := input.nodes.find? (·.name == labelString data.label) then
+    -- An explicit repository mapping is authoritative; unmapped native identities survive.
+    identity := none
     let source := data.sourceRef
     let pdf := source.bind (·.spans[0]?) |>.bind (·.pdf) |>.map (input.blobBase ++ ·.path) |>.getD ""
     if entry.spanOnly then
@@ -80,7 +88,9 @@ private def enrich (input : Input) (data : BlockOccurrence) : BlockOccurrence :=
       let href := if entry.href.isEmpty then pdf else entry.href
       if !href.isEmpty then
         identity := some { label := entry.label, href, pdfHref := pdf }
-  return { data with paperIdentity := identity, readerContext := some input.reader }
+  return { data with
+    paperIdentity := identity
+    readerContext := some { input.reader with sourceBaseUrl := input.blobBase } }
 
 private partial def prepareBlock (input : Input) (insideNode : Bool)
     (block : Doc.Block Manual) : StateM Nat (Doc.Block Manual) := do
