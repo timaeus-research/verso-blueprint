@@ -1,14 +1,16 @@
 import Lake
 open Lake DSL
 
--- Pin the matching Lean 4.35 release-candidate dependency stack.
-require verso from git "https://github.com/leanprover/verso"@"v4.35.0-rc4"
-require «verso-slides» from git "https://github.com/leanprover/verso-slides"@"v4.35.0-rc4"
-require subverso from git "https://github.com/leanprover/subverso"@"verso-v4.35.0-rc4"
-require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.115"
+-- The Lean v4.35.0 release dependency stack.
+require verso from git "https://github.com/leanprover/verso"@"v4.35.0"
+require «verso-slides» from git "https://github.com/leanprover/verso-slides"@"v4.35.0"
+require subverso from git "https://github.com/leanprover/subverso"@"verso-v4.35.0"
+-- ProofWidgets pinned to the revision Mathlib v4.35.0 uses (v0.0.116), so a Mathlib-based
+-- blueprint project resolves a single ProofWidgets.
+require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.116"
 require lean_vir from git "https://github.com/ejgallego/lean-vir"@"aa465b873387a0bf46669031da1af99f59b0f3b9"
 -- BibTeX parsing and formatting for `blueprint_bibliography_file` (brings fgdorais/lean4-unicode-basic).
-require BibtexQuery from git "https://github.com/dupuisf/BibtexQuery"@"852edafa268eb038a7158551fd580ee8433847b0"
+require BibtexQuery from git "https://github.com/dupuisf/BibtexQuery"@"876b844aa52183cbcc0d82fdd4d1fc349f0dac34"
 
 package VersoBlueprint where
   leanOptions := #[⟨`experimental.module, true⟩]
