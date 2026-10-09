@@ -65,6 +65,11 @@ header (as does the framework's older `:::formalizationTodo`), and a proof block
 is not folded. The other kinds owe nothing. `:::meta` (**Formalisation note**)
 remains available for implementation commentary.
 
+The same kinds can be written in a declaration's docstring, as the labelled items of a
+"Relation to the source." section (`**Gap.** ...`, `**Formalisation note.** ...` for `meta`); a
+node embedding the declaration renders them as these boxes, an `unformalised` or `gap` item
+marking its header too. See `TIMAEUS.md`.
+
 Put a note concerning a particular theorem or definition inside that node:
 
 ````markdown

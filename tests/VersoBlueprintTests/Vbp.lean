@@ -1490,6 +1490,14 @@ private def queryReadModeExamples : List (String × List String × Bool) := [
 #guard_msgs in
 #eval
   show Bool from
+    match VersoBlueprint.Vbp.Main.parseBuildOptions ["--hide-review"] {} with
+    | .ok opts => opts.hideReview && !opts.verbose
+    | .error _ => false
+
+/-- info: true -/
+#guard_msgs in
+#eval
+  show Bool from
     match VersoBlueprint.Vbp.Main.parseBuildOptions ["--port", "70000"] {} with
     | .ok _ => false
     | .error err =>

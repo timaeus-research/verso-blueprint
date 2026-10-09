@@ -1,5 +1,6 @@
 import VersoManual
 import VersoBlueprint.TeX
+import VersoBlueprint.ReviewLedger
 
 open Verso Doc Elab Genre Manual Lean
 open Verso.ArgParse
@@ -17,7 +18,13 @@ unprinted hypothesis it needs included; the corrected version is stated) or `int
 form of the whole statement, used sparingly), `strengthening` (the formal statement implies the
 paper's, converse not claimed) or `gap` (weaker or incomparable). `translation` is the dictionary
 (this Lean expression is the paper's such-and-such), orthogonal to the comparison. `meta` and
-`formalizationTodo` are the framework's older kinds and remain available. -/
+`formalizationTodo` are the framework's older kinds and remain available.
+
+Besides the directives, the items of a "Relation to the source." section in the docstring of a
+declaration a node embeds become boxes of these kinds, except `formalizationTodo`: each label names
+the kind of the same title, and a formalisation note is `meta` (`Block.sourceItem`,
+`Informal.SourceAnnotations`); their review state comes from the review ledger
+(`Informal.ReviewLedger`). An `unformalised` item from a docstring has no `missing` badge. -/
 inductive Kind where
   | «meta»
   | formalizationTodo
@@ -88,19 +95,29 @@ def Missing.parse? : String → Option Missing
   | "proof" => some .proof
   | _ => none
 
-/-- Whether a human has checked the annotation: an agent's assessment until then. -/
+/-- Whether a human has checked the annotation: an agent's assessment until then. A hand-written
+directive is `unreviewed` or `reviewed`; an item taken from a docstring can also have changed since
+its last review (`ReviewLedger.Status`). -/
 inductive Review where
   | unreviewed
   | reviewed (initials date : String)
+  | changedSinceReview
 deriving BEq, FromJson, ToJson, Repr
 
 def Review.label : Review → String
   | .unreviewed => "unreviewed"
   | .reviewed initials date => s!"reviewed {initials} {date}"
+  | .changedSinceReview => "changed since review"
 
 def Review.state : Review → String
   | .unreviewed => "unreviewed"
   | .reviewed .. => "reviewed"
+  | .changedSinceReview => "changed"
+
+def Review.ofStatus : ReviewLedger.Status → Review
+  | .unreviewed => .unreviewed
+  | .changedSinceReview => .changedSinceReview
+  | .reviewed reviewer date => .reviewed reviewer date
 
 /-- `unreviewed`, or `reviewed <initials> <date>`. -/
 def Review.parse? (s : String) : Option Review :=
@@ -140,6 +157,9 @@ def css : String := r##"
 .bp-badge, .bp-correspondence-warning { display:inline-block; font-size:.7rem; font-weight:600; line-height:1.4; padding:.05rem .5rem; border-radius:.7rem; border:1px solid transparent; text-transform:none; letter-spacing:.01em; vertical-align:middle; }
 .bp-badge-review[data-review=unreviewed] { color:light-dark(#475569,#cbd5e1); background:light-dark(#e2e8f0,#334155); }
 .bp-badge-review[data-review=reviewed] { color:light-dark(#166534,#bbf7d0); background:light-dark(#dcfce7,#14532d); }
+.bp-badge-review[data-review=changed] { color:light-dark(#92400e,#fde68a); background:light-dark(#fef3c7,#422006); }
+.bp-editorial-decl { font-size:.8rem; font-weight:500; color:light-dark(#475569,#cbd5e1); }
+.bp-editorial-decl code { font-size:inherit; }
 .bp-badge-missing { color:light-dark(#991b1b,#fecaca); background:light-dark(#fee2e2,#450a0a); }
 .bp-correspondence-warning { color:light-dark(#9a3412,#fdba74); background:light-dark(#ffedd5,#431407); }
 .bp-editorial[data-kind=gap], .bp-editorial[data-kind=formalizationTodo] { --bp-kind:light-dark(#c2410c,#fdba74); }
@@ -158,26 +178,39 @@ def css : String := r##"
 def badge (cls text : String) (extra : Array (String × String) := #[]) : Output.Html :=
   .tag "span" (#[("class", s!"bp-badge {cls}")] ++ extra) (.text true text)
 
-def Annotation.badges (a : Annotation) : Array Output.Html := Id.run do
+/-- The badges of an annotation; with `hideReview`, the review badge is left out (`--hide-review`). -/
+def Annotation.badges (a : Annotation) (hideReview : Bool := false) : Array Output.Html := Id.run do
   let mut out : Array Output.Html := #[]
   if let some m := a.missing then out := out.push (badge "bp-badge-missing" s!"missing: {m.key}")
-  out := out.push (badge "bp-badge-review" a.review.label #[("data-review", a.review.state)])
+  unless hideReview do
+    out := out.push (badge "bp-badge-review" a.review.label #[("data-review", a.review.state)])
   return out
 
-def Annotation.badgeText (a : Annotation) : String :=
+def Annotation.badgeText (a : Annotation) (hideReview : Bool := false) : String :=
   let parts : Array String :=
-    (a.missing.map fun m => s!"missing: {m.key}").toArray ++ #[a.review.label]
-  " (" ++ String.intercalate "; " parts.toList ++ ")"
+    (a.missing.map fun m => s!"missing: {m.key}").toArray ++
+      (if hideReview then #[] else #[a.review.label])
+  if parts.isEmpty then "" else " (" ++ String.intercalate "; " parts.toList ++ ")"
 
-def render (a : Annotation) (contents : Array Output.Html) : Output.Html :=
+/-- One annotation box. `decl?` names the declaration whose docstring the item comes from, shown
+after the kind; `attrs` are extra attributes of the box. -/
+def render (a : Annotation) (contents : Array Output.Html) (hideReview : Bool := false)
+    (decl? : Option String := none) (attrs : Array (String × String) := #[]) : Output.Html :=
   open Output.Html in
-  {{<aside class="bp-editorial" data-kind={{a.kind.key}} data-review={{a.review.state}} aria-label={{a.kind.title}}>
-    <div class="bp-editorial-title">
-      <span class="bp-editorial-kind">{{.text true a.kind.title}}</span>
-      {{.seq a.badges}}
-    </div>
-    <div class="bp-editorial-content">{{.seq contents}}</div>
-  </aside>}}
+  let reviewAttrs := if hideReview then #[] else #[("data-review", a.review.state)]
+  let declHtml : Output.Html :=
+    match decl? with
+    | some d => {{<span class="bp-editorial-decl"><code>{{.text true d}}</code></span>}}
+    | Option.none => .empty
+  .tag "aside"
+    (#[("class", "bp-editorial"), ("data-kind", a.kind.key)] ++ reviewAttrs ++
+      #[("aria-label", a.kind.title)] ++ attrs)
+    {{<div class="bp-editorial-title">
+        <span class="bp-editorial-kind">{{.text true a.kind.title}}</span>
+        {{declHtml}}
+        {{.seq (a.badges hideReview)}}
+      </div>
+      <div class="bp-editorial-content">{{.seq contents}}</div>}}
 
 block_extension Block.editorial (kindKey review missing : String) where
   data := toJson (Annotation.ofStrings kindKey review missing)
@@ -187,16 +220,89 @@ block_extension Block.editorial (kindKey review missing : String) where
     let .ok ann := fromJson? (α := Annotation) raw
       | Verso.reportError "Malformed editorial annotation"
         return .empty
-    return render ann (← blocks.mapM goB)
+    return render ann (← blocks.mapM goB) (hideReview := ← ReviewLedger.reviewHidden)
   toTeX := some fun _ goB _ raw blocks => do
     let .ok ann := fromJson? (α := Annotation) raw
       | Verso.reportError "Malformed editorial annotation"
         return .empty
     let body ← blocks.mapM goB
-    return Informal.TeX.quotedBlock (ann.kind.title ++ ann.badgeText) body
+    let hide ← ReviewLedger.reviewHidden
+    return Informal.TeX.quotedBlock (ann.kind.title ++ ann.badgeText hide) body
+
+/-- An annotation taken from the "Relation to the source." section of a declaration's docstring
+(`Informal.SourceRelation`). Its review state is looked up in the review ledger when the page is
+generated (`Informal.ReviewLedger`). -/
+structure SourceItem where
+  /-- The annotation kind that renders the item's label (`SourceRelation.Label.kindKey`: the kind
+  of the same title, or `meta` for a formalisation note). -/
+  kind : Kind
+  /-- The item's label as the ledger names it (`Translation`, ..., `Gap`, `Formalisation note`). -/
+  label : String
+  /-- The full name of the declaration: the ledger's `decl`. -/
+  decl : String
+  /-- The declaration as the box title shows it; empty when the node embeds one declaration. -/
+  declLabel : String := ""
+  /-- `SourceRelation.itemHash` of the item's text: the ledger's `hash`. -/
+  hash : String
+  /-- The hashes of all items of this label in the declaration's docstring, in docstring order
+  (this item's included); `ReviewLedger.status` compares them with the ledger together. -/
+  siblings : Array String := #[]
+  /-- The position of this item in `siblings`. -/
+  index : Nat := 0
+  /-- The ledger file (`verso.blueprint.reviewLedger` where the node was elaborated). -/
+  ledger : String
+deriving BEq, FromJson, ToJson, Repr
+
+/-- The review state of a source item, reporting the ledger's problems once per build. -/
+def SourceItem.review {m} [Monad m] [MonadLiftT IO m] [Verso.MonadBuildLog m]
+    (item : SourceItem) : m Review := do
+  let (entries, problems, firstRead) ← (ReviewLedger.load item.ledger : IO _)
+  if firstRead then
+    for p in problems do
+      Verso.reportError s!"Review ledger {item.ledger}: {p}"
+  let (hashes, index) :=
+    if item.siblings[item.index]? == some item.hash then (item.siblings, item.index)
+    else (#[item.hash], 0)
+  return Review.ofStatus (ReviewLedger.status entries item.decl item.label hashes index)
+
+block_extension Block.sourceItem (kindKey label decl declLabel hash : String)
+    (siblings : Array String) (index : Nat) (ledger : String) where
+  data :=
+    let item : SourceItem :=
+      { kind := (Kind.ofKey? kindKey).getD .meta, label, decl, declLabel, hash, siblings, index,
+        ledger }
+    toJson item
+  extraCss := [css]
+  traverse _ _ _ := pure none
+  toHtml := some fun _ goB _ raw blocks => do
+    let .ok item := fromJson? (α := SourceItem) raw
+      | Verso.reportError "Malformed docstring annotation"
+        return .empty
+    let hide ← ReviewLedger.reviewHidden
+    let review ← if hide then pure .unreviewed else item.review
+    let decl? := if item.declLabel.isEmpty then Option.none else some item.declLabel
+    return render { kind := item.kind, review } (← blocks.mapM goB) (hideReview := hide)
+      (decl? := decl?) (attrs := #[("data-decl", item.decl), ("data-hash", item.hash)])
+  toTeX := some fun _ goB _ raw blocks => do
+    let .ok item := fromJson? (α := SourceItem) raw
+      | Verso.reportError "Malformed docstring annotation"
+        return .empty
+    let hide ← ReviewLedger.reviewHidden
+    let review ← if hide then pure .unreviewed else item.review
+    let ann : Annotation := { kind := item.kind, review }
+    let declText := if item.declLabel.isEmpty then "" else s!" [{item.declLabel}]"
+    let body ← blocks.mapM goB
+    return Informal.TeX.quotedBlock (ann.kind.title ++ declText ++ ann.badgeText hide) body
+
+/-- Whether a block is an annotation box taken from a docstring (`Block.sourceItem`). -/
+def isSourceItemBlock : Doc.Block Manual → Bool
+  | .other ext _ => ext.name == ``Block.sourceItem
+  | _ => false
 
 /-- Inspect the document tree, not rendered HTML or author-supplied approval flags. True when an
-annotation of a kind that owes work (`unformalised`, `gap`, `formalizationTodo`) is present. -/
+annotation of a kind that owes work (`unformalised`, `gap`, `formalizationTodo`) is present, written
+as a directive. Items taken from docstrings never mark a node: there a gap is a recorded
+difference from the source, not work owed. -/
 partial def hasFormalizationTodo : Doc.Block Manual → Bool
   | .other ext children =>
     (ext.name == ``Block.editorial &&

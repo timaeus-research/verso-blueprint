@@ -293,7 +293,10 @@ def externalRefSnapshot (opts : Lean.Options) (workspaceRoot : System.FilePath)
         (headerBadge? := some (externalDeclStatusBadge ref.provedStatus))
         (headerSource? := headerSource?)
         (showBody := verso.blueprint.externalCode.definitionBodies.get opts)
-        (showUniverses := verso.blueprint.externalCode.showUniverses.get opts)).run'
+        (showUniverses := verso.blueprint.externalCode.showUniverses.get opts)
+        -- a `(lean := ...)` node renders the section as annotation boxes; a `@[blueprint]`
+        -- declaration's node does not, so its docstring keeps it
+        (stripSourceRelation := ref.origin == .directiveLean)).run'
     let render : Data.ExternalDeclRender :=
       match renderResult with
       | .ok html => .ok html

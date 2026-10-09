@@ -89,7 +89,7 @@ def paper (identity : PaperIdentity) : Html :=
   if !identity.isValid then .empty else
   open Html in
   {{<span class="bp_paper_ref_badge">
-      <span class="bp_paper_ref_key">"paper"</span>
+      <span class="bp_paper_ref_key">"source"</span>
       <a class="bp_paper_ref" href={{identity.href}} target="_blank" rel="noopener noreferrer">
         {{.text true (identity.label ++ " ↗")}}</a>
       {{if identity.pdfHref.isEmpty || identity.pdfHref == identity.href then .empty else

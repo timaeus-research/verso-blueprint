@@ -209,6 +209,11 @@ This informal node is linked to existing compiled Lean declarations.
 :::
 ```
 
+In this fork, a "Relation to the source." section in the docstring of a declaration named in
+`(lean := ...)` is rendered as annotation boxes under the node's statement, with review badges
+from a review ledger (`reviews.json`); `lake exe vbp build --hide-review` leaves the badges out.
+See [TIMAEUS.md](TIMAEUS.md#annotations-from-docstrings).
+
 ### Attached Rust code
 
 Blueprint also supports labeled inline Rust code blocks:

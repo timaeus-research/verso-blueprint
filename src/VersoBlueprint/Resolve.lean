@@ -51,6 +51,14 @@ is referenced by many blueprint entries. Inline preview bodies themselves are ke
 source code-block identity.
 -/
 def externalRenderedDeclDomainName : Name := Name.mkSimple "Informal.Block.externalRenderedDecl"
+/--
+Domain that names, for each declaration presented at some node, the node whose rendering of it
+declaration links go to (keyed by the declaration's full name; object data
+`{"label", "definition"}`).
+The canonical node is the first node in document order whose `(lean := ...)` list names the
+declaration, except that a definition node takes precedence over a theorem-like node.
+-/
+def canonicalDeclDomainName : Name := Name.mkSimple "Informal.Block.canonicalDecl"
 def bibliographyDomainName : Name := Name.mkSimple "Informal.Block.bpCitations"
 def citationPreviewDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.previews"
 def citationUsageDomainName : Name := Name.mkSimple "Informal.Inline.bpCite.usages"
@@ -115,6 +123,29 @@ def resolveRenderedExternalDeclHref? (s : Verso.Genre.Manual.TraverseState)
     let occurrence ← (selected.data.getObjValAs? (Option Verso.Multi.InternalId) "target").toOption.join
     resolveDomainHref? s externalRenderedDeclDomainName (externalRenderedDeclTargetKey occurrence decl)) <|>
   resolveDomainHref? s externalRenderedDeclDomainName (externalRenderedDeclFallbackKey label decl)
+
+/-- The canonical node presenting the declaration named `decl` (`Name.toString`), and the
+declaration's name. -/
+def canonicalDecl? (s : Verso.Genre.Manual.TraverseState) (decl : String) : Option (Name × Name) := do
+  let obj ← s.getDomainObject? canonicalDeclDomainName decl
+  let label ← (obj.data.getObjValAs? Name "label").toOption
+  let name ← (obj.data.getObjValAs? Name "decl").toOption
+  return (label, name)
+
+/--
+The link to the canonical node's rendering of the declaration named `decl` (`Name.toString`),
+when some node presents it.
+-/
+def resolveCanonicalDeclHref? (s : Verso.Genre.Manual.TraverseState) (decl : String) :
+    Option String := do
+  let (label, name) ← canonicalDecl? s decl
+  resolveRenderedExternalDeclHref? s label name
+
+/-- The full names of all declarations presented at some node. -/
+def canonicalDeclNames (s : Verso.Genre.Manual.TraverseState) : Array String :=
+  match s.domains.get? canonicalDeclDomainName with
+  | none => #[]
+  | some dom => dom.objects.foldl (init := #[]) fun acc key _ => acc.push key
 
 /--
 Resolve a Lean declaration link as seen from one informal block.

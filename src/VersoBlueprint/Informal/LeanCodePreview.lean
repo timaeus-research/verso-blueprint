@@ -81,6 +81,7 @@ def renderWithState
       (logError := logError) (hoverState := hoverState)
   | .externalDecl decl =>
     let (html, hoverState) := Informal.ExternalCode.renderPreviewHtmlWithCacheHovers #[decl] hoverState
+      (declHref := Informal.Resolve.resolveCanonicalDeclHref? state)
     pure { html, hoverState }
 
 def renderHtmlWithState

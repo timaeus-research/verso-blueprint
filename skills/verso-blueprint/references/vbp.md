@@ -8,7 +8,7 @@ Run `lake exe vbp --help` for complete local CLI usage. The main command forms a
 
 ```bash
 lake exe vbp discover
-lake exe vbp build [--output <dir>] [--pdf] [--verbose] [--serve] [--port <n>]
+lake exe vbp build [--output <dir>] [--pdf] [--verbose] [--hide-review] [--serve] [--port <n>]
 lake exe vbp query [--site <dir>] <selector>
 lake exe vbp check [--site <dir>]
 ```
@@ -38,6 +38,8 @@ Defaults:
 - Pass `--output <dir>` only to choose where `build` writes generated output.
 - Pass `--pdf` to build `_out/site/pdf/main.pdf` from the generated TeX.
 - Pass `--verbose` to show Blueprint generation phase progress while building.
+- Pass `--hide-review` to render annotation boxes without review badges (the generator flag of
+  the same name, or `VERSO_BLUEPRINT_HIDE_REVIEW=1` in the environment, does the same).
 - Pass `--site <dir>` to `query` or `check` only when reading a non-default site.
 
 ## Build And Serve

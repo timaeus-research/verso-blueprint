@@ -85,7 +85,8 @@ private def renderLeanCodePreviewBody?
     | .externalDecl decl =>
       pure (Informal.ExternalCode.renderPreviewHtml #[decl]
         (Informal.Resolve.resolveInformalDeclHref? state label)
-        (fun decl => Informal.TraversalIndex.ExternalDeclAnchors.htmlIdAttrs state id decl.canonical))
+        (fun decl => Informal.TraversalIndex.ExternalDeclAnchors.htmlIdAttrs state id decl.canonical)
+        (declHref := Informal.Resolve.resolveCanonicalDeclHref? state))
   pure <| some (body, panel.facts)
 
 private def renderLeanCodeBodies

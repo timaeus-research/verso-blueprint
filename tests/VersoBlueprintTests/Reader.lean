@@ -27,6 +27,7 @@ private def identityImpls : ExtensionImpls := extension_impls%
 #eval! do
   let html ← renderManualDocHtmlString identityImpls importedIdentityDoc
   pure <| countSubstr html "bp_paper_ref_badge" == 2 &&
+    countSubstr html "<span class=\"bp_paper_ref_key\">source</span>" == 2 &&
     hasSubstr html "Definition 2 ↗" && hasSubstr html "Lemma 3 ↗" &&
     hasSubstr html "source/paper.pdf#page=3" && hasSubstr html "page 3"
 
@@ -92,6 +93,7 @@ private def node : BlockData := {
   return appearsBefore html "bp_paper_ref_badge" "bp_extras" &&
     hasSubstr html "Theorem 3" && hasSubstr html "bp_issue_chip" &&
     hasSubstr html "Informal.Block.informal" &&
+    hasSubstr html (Reader.encode "Source: Theorem 3") && !(hasSubstr html (Reader.encode "Paper: ")) &&
     !(hasSubstr proofHtml "bp_paper_ref_badge") && hasSubstr proofHtml "bp_issue_chip"
 
 private def sourceFixture : Source.Ref := {

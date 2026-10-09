@@ -6,6 +6,7 @@ Author: Emilio J. Gallego Arias
 
 import VersoManual
 import VersoBlueprint.Informal.ExternalMarkupRender
+import VersoBlueprint.ReviewLedger
 
 namespace Informal.PreviewManifest
 
@@ -146,6 +147,9 @@ def helpText : String := String.intercalate "\n" [
   s!"  {pdfFlag}               Emit TeX and build pdf/main.pdf with lualatex.",
   s!"  {pdfEngineFlag} <cmd>  Use a lualatex-compatible command for PDF builds.",
   s!"  {pdfRunsFlag} <n>      Number of LaTeX passes for PDF builds, default 2.",
+  "",
+  "Blueprint annotation options:",
+  s!"  {Informal.ReviewLedger.hideReviewFlag}       Render annotation boxes without review badges (also {Informal.ReviewLedger.hideReviewEnvVar}=1).",
   "",
   "Standard manual rendering options:",
   "  --output <dir>",
