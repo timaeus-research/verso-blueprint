@@ -49,6 +49,7 @@ import VersoBlueprint.Informal.Group
 import VersoBlueprint.Informal.Author
 import VersoBlueprint.Informal.Uses
 import VersoBlueprint.ExternalDeclRender
+import VersoBlueprint.LeanNamesLegend
 import VersoBlueprint.Lean
 import VersoBlueprint.LabelNameParsing
 import VersoBlueprint.LeanNameParsing

@@ -142,9 +142,9 @@ private def SummaryHtmlContext.entryRef (ctx : SummaryHtmlContext) (label : Name
   Informal.HoverRender.summaryPreviewWrap labelNode previewLabel? previewLookupKey?
 
 private def SummaryHtmlContext.declItems (ctx : SummaryHtmlContext) (label : Name)
-    (decls : List Name) : Array Output.Html :=
-  decls.toArray.map fun decl =>
-    let declNode := summaryRenderLeanDeclLink decl {{<code>s!"{decl}"</code>}}
+    (decls : List Name) (displays : List Name := []) : Array Output.Html :=
+  (decls.zip (displays ++ decls.drop displays.length)).toArray.map fun (decl, display) =>
+    let declNode := summaryRenderLeanDeclLink decl {{<code>s!"{display}"</code>}}
       (ctx.declHref? label decl) (previewLookupKey? := ctx.declPreviewLookupKey? label decl)
     {{ <li>{{declNode}}</li> }}
 
@@ -347,21 +347,21 @@ private def summaryItemShell
     </li> }}
 
 private def SummaryHtmlContext.associatedDecls (ctx : SummaryHtmlContext) (label : Name)
-    (leanObjects : List Name) : Output.Html :=
+    (leanObjects : List Name) (displays : List Name := []) : Output.Html :=
   if leanObjects.isEmpty then
     .empty
   else
-    {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{ctx.declItems label leanObjects}}</ul></details>}}
+    {{<details class="bp_summary_decls"><summary>s!"Associated lean decls ({leanObjects.length})"</summary><ul class="bp_summary_decl_list">{{ctx.declItems label leanObjects displays}}</ul></details>}}
 
 private def SummaryHtmlContext.leanRow (ctx : SummaryHtmlContext) (label : Name) (kind : String)
-    (leanObjects : List Name) : Output.Html :=
+    (leanObjects : List Name) (displays : List Name := []) : Output.Html :=
   let entryRef := ctx.entryRef label
   summaryItemShell entryRef (some (.text true s!"({kind})"))
-    .empty #[] #[ctx.associatedDecls label leanObjects]
+    .empty #[] #[ctx.associatedDecls label leanObjects displays]
 
 private def SummaryHtmlContext.leanRows (ctx : SummaryHtmlContext) (items : List IndexItem) :
     Array Output.Html :=
-  items.toArray.map fun item => ctx.leanRow item.label item.kind item.leanObjects
+  items.toArray.map fun item => ctx.leanRow item.label item.kind item.leanObjects item.leanDisplayNames
 
 private def SummaryHtmlContext.sorryRow (ctx : SummaryHtmlContext) (item : SorryItem) :
     SummaryHtmlM Output.Html := do
@@ -460,7 +460,7 @@ private def SummaryHtmlContext.priorityRow (ctx : SummaryHtmlContext) (item : Pr
   summaryItemShell entryRef (some (.text true s!"({item.kind})"))
     (summaryItemTextBody s!"Ready for {item.stage} work.")
     badges
-    #[ctx.associatedDecls item.label item.leanObjects, summaryActionLinksRow actionLinks]
+    #[ctx.associatedDecls item.label item.leanObjects item.leanDisplayNames, summaryActionLinksRow actionLinks]
 
 private def SummaryHtmlContext.usageRow (ctx : SummaryHtmlContext) (item : UsageItem)
     (bodyText primaryLabel secondaryLabel : String) (primaryCount secondaryCount : Nat) : Output.Html :=
@@ -473,7 +473,7 @@ private def SummaryHtmlContext.usageRow (ctx : SummaryHtmlContext) (item : Usage
   summaryItemShell entryRef (some (.text true s!"({item.kind})"))
     (summaryItemTextBody bodyText)
     badges
-    #[ctx.associatedDecls item.label item.leanObjects]
+    #[ctx.associatedDecls item.label item.leanObjects item.leanDisplayNames]
 
 private def SummaryHtmlContext.usageRowsForAxis (ctx : SummaryHtmlContext)
     (items : Array UsageItem) (bodyText primaryLabel secondaryLabel : String)
@@ -499,7 +499,7 @@ private def SummaryHtmlContext.dependencyLoadRow (ctx : SummaryHtmlContext)
   summaryItemShell entryRef (some (.text true s!"({item.kind})"))
     (summaryItemTextBody "Prerequisite fan-in measured from the current statement/proof dependency graph.")
     badges
-    #[ctx.associatedDecls item.label item.leanObjects]
+    #[ctx.associatedDecls item.label item.leanObjects item.leanDisplayNames]
 
 private def summaryProofDebtHotspotRow (item : DebtHotspotItem) : Output.Html :=
   let badges :=
@@ -554,7 +554,7 @@ private def SummaryHtmlContext.metadataEntryRow (ctx : SummaryHtmlContext) (item
   summaryItemShell entryRef (some (.text true s!"({item.kind})"))
     (summaryItemTextBody bodyText)
     badges
-    #[ctx.associatedDecls item.label item.leanObjects, summaryActionLinksRow actionLinks]
+    #[ctx.associatedDecls item.label item.leanObjects item.leanDisplayNames, summaryActionLinksRow actionLinks]
 
 private def SummaryHtmlContext.metadataEntryRows (ctx : SummaryHtmlContext)
     (items : List MetadataEntryItem) (bodyText : String) : Array Output.Html :=

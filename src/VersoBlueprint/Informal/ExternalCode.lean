@@ -183,11 +183,11 @@ private def externalDeclStatusView (item : LinkedExternalDecl) : ExternalDeclSta
 
 private def externalDeclNode (item : LinkedExternalDecl) : Output.Html :=
   open Verso.Output.Html in
-  let declTxt := {{<code>{{.text true s!"{item.decl.written}"}}</code>}}
+  let declTxt := {{<code>{{.text true s!"{item.decl.displayName}"}}</code>}}
   if let some href := item.href then
     Informal.LeanCodeLink.renderResolved
       item.decl.canonical declTxt "" (some href)
-      (previewTitle := s!"{item.decl.canonical}")
+      (previewTitle := s!"{item.decl.displayName}")
   else
     declTxt
 
@@ -224,12 +224,21 @@ private def externalDeclRenderedMeta
     else
       .empty
   let sourceRef? := externalDeclSourceRef? item
+  let opens := item.decl.displayOpenNamespaces
+  let legend : Output.Html :=
+    if item.decl.legendInKicker && !opens.isEmpty then
+      {{<span class="bp_external_decl_open_namespaces">
+          "names relative to " {{.text true (String.intercalate ", " (opens.map (·.toString)))}}
+        </span>}}
+    else
+      .empty
   {{
     <div class="bp_external_decl_meta bp_external_decl_rendered_meta">
       {{statusBadge}}
       {{if let some sourceRef := sourceRef? then
         {{<span class="bp_external_decl_rendered_source">{{sourceRef}}</span>}}
        else .empty}}
+      {{legend}}
     </div>
   }}
 

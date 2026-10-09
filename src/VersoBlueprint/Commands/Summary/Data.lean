@@ -39,7 +39,9 @@ structure IndexItem where
   label : Name
   kind : String
   leanObjects : List Name := []
-deriving Inhabited, FromJson, ToJson
+  /-- The names of `leanObjects` as the pages show them (relative to the open namespaces). -/
+  leanDisplayNames : List Name := []
+deriving Inhabited, FromJson, ToJson, Quote
 
 abbrev PendingInformalItem := IndexItem
 
@@ -71,7 +73,8 @@ structure PriorityItem where
   directUses : Nat := 0
   downstreamUses : Nat := 0
   leanObjects : List Name := []
-deriving Inhabited, FromJson, ToJson
+  leanDisplayNames : List Name := []
+deriving Inhabited, FromJson, ToJson, Quote
 
 structure UsageItem where
   label : Name
@@ -81,7 +84,8 @@ structure UsageItem where
   directUses : Nat := 0
   downstreamUses : Nat := 0
   leanObjects : List Name := []
-deriving Inhabited, FromJson, ToJson
+  leanDisplayNames : List Name := []
+deriving Inhabited, FromJson, ToJson, Quote
 
 structure GroupHealthItem where
   parent : Name
@@ -112,7 +116,8 @@ structure DependencyLoadItem where
   directUses : Nat := 0
   downstreamUses : Nat := 0
   leanObjects : List Name := []
-deriving Inhabited, FromJson, ToJson
+  leanDisplayNames : List Name := []
+deriving Inhabited, FromJson, ToJson, Quote
 
 structure DebtHotspotItem where
   parent : Name
@@ -150,7 +155,8 @@ structure MetadataEntryItem where
   issueUrl : Option String := none
   tags : List String := []
   leanObjects : List Name := []
-deriving Inhabited, FromJson, ToJson
+  leanDisplayNames : List Name := []
+deriving Inhabited, FromJson, ToJson, Quote
 
 structure Summary where
   showDebugDiagnostics : Bool := false
