@@ -6,9 +6,11 @@ open Lake DSL
 require verso from git "https://github.com/leanprover/verso"@"52c8c9557bcb5cc8c0edc0ee37e74311a3d53ee9"
 require «verso-slides» from git "https://github.com/leanprover/verso-slides"@"v4.34.0-rc2"
 require subverso from git "https://github.com/leanprover/subverso"@"fda188f7329fa18ce4b2e8cc96c9b0a8f0c78c46"
-require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.110"
+-- ProofWidgets pinned to the revision Mathlib v4.34.0 uses (v0.0.111), so a Mathlib-based
+-- blueprint project resolves a single ProofWidgets.
+require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.111"
 -- BibTeX parsing and formatting for `blueprint_bibliography_file` (brings fgdorais/lean4-unicode-basic).
-require BibtexQuery from git "https://github.com/dupuisf/BibtexQuery"@"852edafa268eb038a7158551fd580ee8433847b0"
+require BibtexQuery from git "https://github.com/dupuisf/BibtexQuery"@"4d8616fd4870d0a3453d845770833eac7951fe1c"
 
 package VersoBlueprint where
   leanOptions := #[⟨`experimental.module, true⟩]

@@ -2,7 +2,8 @@
 
 This repository is the Timaeus fork of
 [leanprover/verso-blueprint](https://github.com/leanprover/verso-blueprint). Development
-happens here, on the branch `timaeus/v4.33.1`; consumers pin a commit of that branch.
+happens here, on one branch per Lean release, `timaeus/v4.34.0` the newest; consumers pin a commit
+of the branch for their toolchain. `timaeus/v4.33.1` is kept for consumers on Lean 4.33.1.
 
 ## Provenance
 
@@ -13,9 +14,19 @@ happens here, on the branch `timaeus/v4.33.1`; consumers pin a commit of that br
   head `1322e206`). Those 37 commits are replayed here on top of `a5b363c6` (the first one
   reconstructs the vendoring snapshot); the tree at the branch head is identical to the anchors
   head, and the anchors copy is now an archive.
-- Toolchain: `leanprover/lean4:v4.33.1`. `verso` and `verso-slides` are pinned to their `v4.33.0`
-  tags (upstream publishes no v4.33.1 tag; the patch release is source-compatible);
-  ProofWidgets is pinned to the revision Mathlib v4.33.1 uses.
+- `timaeus/v4.34.0` is the fork rebased onto upstream's `v4.34.0` branch at `a1cf7066`
+  (9 October 2026). Before the rebase the 51 fork commits of `timaeus/v4.33.1` (`a1144583`) were
+  grouped into 9 commits, each listing the commits it replaces; the originals stay on
+  `timaeus/v4.33.1`. Upstream had meanwhile split the block model into node metadata
+  (`BlockMetadata`, from the environment) and occurrences (`BlockOccurrence`, the directive's
+  data), so the fork's per-block fields (paper identity, reader context, formalisation TODO,
+  `legendInKicker`) are now occurrence fields (`BlockPresentation`), and the open-namespace
+  legend reads external declarations from the captured render model.
+- Toolchain: `leanprover/lean4:v4.34.0`. Upstream's branch moved from 4.34.0-rc2 straight to
+  4.34.1; its dependency pins (`verso` at the post-rc2 split-page anchor fix `52c8c955`,
+  `verso-slides` `v4.34.0-rc2`, `subverso` `fda188f7`) build on 4.34.0 and are kept. ProofWidgets
+  is pinned to the revision Mathlib v4.34.0 uses (`v0.0.111`), BibtexQuery to the revision
+  doc-gen4 v4.34.0 uses.
 
 ## What Timaeus added
 
@@ -335,12 +346,16 @@ Tests: `tests/VersoBlueprintTests/BlueprintBibtex.lean` (fixture `tests/VersoBlu
 [[require]]
 name = "VersoBlueprint"
 git = "https://github.com/timaeus-research/verso-blueprint.git"
-rev = "<commit on timaeus/v4.33.1>"
+rev = "<commit on timaeus/v4.34.0>"
 ```
 
 ## Syncing with upstream
 
-Upstream keeps one branch per Lean release (`v4.33.0`, `v4.34.0`, ...). To take upstream fixes,
-merge upstream's `v4.33.0` into `timaeus/v4.33.1` (upstream had advanced 101 commits past the
-base by 22 September 2026); for a new Lean release, start `timaeus/v4.NN.M` from the fork's
-corresponding branch and cherry-pick the Timaeus commits.
+Upstream keeps one branch per Lean release (`v4.33.0`, `v4.34.0`, ...). For a new Lean release,
+start `timaeus/v4.NN.M` from upstream's branch for that release and rebase the fork's commits onto
+it, as `timaeus/v4.34.0` was (see Provenance); a fork branch that is already published is not
+rewritten.
+
+Known test failures, also on `timaeus/v4.33.1`: `ReaderImported` (uses the dropped
+`clarification` directive) and `BlueprintPreviewWiring/Summary` (its fixture namespace starts with
+`Verso`, which `ExternalRef.displayOpenNamespaces` filters out).
