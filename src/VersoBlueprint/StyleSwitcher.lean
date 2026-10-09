@@ -321,6 +321,33 @@ private def jsTemplate : String := r##"(function () {
       return commandStartKeywords.has(tokText);
     }
 
+    function declarationProofBy(tokens, start, end) {
+      const closing = new Map([
+        ["(", ")"], ["[", "]"], ["#[", "]"], ["{", "}"],
+        ["⦃", "⦄"], ["⟨", "⟩"]
+      ]);
+      const closers = new Set(closing.values());
+      const stack = [];
+      const declaration = tokens.filter(t => t.start > start && t.end <= end);
+      for (let i = 0; i < declaration.length; i++) {
+        const token = declaration[i];
+        if (closing.has(token.tokText)) {
+          stack.push(closing.get(token.tokText));
+        } else if (closers.has(token.tokText)) {
+          if (stack.pop() !== token.tokText) return null;
+        } else if (stack.length === 0) {
+          // Do not guess at unparenthesized term-level assignments in a type.
+          // Leaving an unfamiliar declaration unfolded is safer than hiding it.
+          if (token.tokText === "let" || token.tokText === "match") return null;
+          if (token.tokText === ":=") {
+            const body = declaration[i + 1];
+            return body && body.tokText === "by" ? body : null;
+          }
+        }
+      }
+      return null;
+    }
+
     blocks.forEach((block) => {
       if (!(block instanceof HTMLElement)) return;
       const details = block.closest("details.bp_code_block");
@@ -365,9 +392,7 @@ private def jsTemplate : String := r##"(function () {
         );
         const segmentEnd = boundary ? boundary.start : text.length;
         if (segmentEnd <= decl.start) continue;
-        const byTok = keywordTokens.find((t) =>
-          t.tokText === "by" && t.start > decl.start && t.end <= segmentEnd
-        );
+        const byTok = declarationProofBy(allTokens, decl.start, segmentEnd);
         if (!byTok) continue;
         let hideStart = byTok.end;
         if (hideStart >= segmentEnd) continue;

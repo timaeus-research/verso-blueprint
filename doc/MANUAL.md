@@ -4,6 +4,9 @@ This document is the current reference for Blueprint authoring and rendering.
 For documented Lean, generated-data, and browser integration APIs, see
 [`API.md`](./API.md).
 
+For optional batch-only evidence of actual scoped Lean applications and
+instance arguments, see [Contextual occurrence evidence](./OCCURRENCE_INVENTORY.md).
+
 If you are starting a first project, read
 [project_template/README.md](../project_template/README.md) and
 [GETTING_STARTED.md](./GETTING_STARTED.md) before this manual.
@@ -422,6 +425,12 @@ theorem nat_add_zero_right (n : Nat) : n + 0 = n := by
 
 This is the clearest way to connect a Blueprint entry to local formalization
 work in the same project.
+
+Several visible Lean blocks may share one Blueprint label, with prose between
+them. The owning node's declaration list, proof status, dependencies, and Lean
+preview include all those blocks; each code panel keeps its own local summary.
+The node's code link targets the first block, including when it contains only
+setup commands.
 
 ### Compiled code tagged with `@[blueprint]`
 
@@ -926,6 +935,44 @@ Notes:
 - Blueprint labels are Blueprint-owned metadata
 - Blueprint label conventions do not rewrite external Lean names
 
+### Universe parameters in native term blocks
+
+Native `InlineLean.leanTerm` blocks also support explicitly named universe
+parameters, with the same contextual highlighting as inline Lean terms:
+
+````md
+```InlineLean.leanTerm (universes := "u")
+fun (α : Type u) (x : α) => x
+```
+````
+
+On the pinned Verso dependency, run the supplied `apply-verso-patches.py`
+after fetching dependencies: the term-universe patch makes this option apply
+to the block's expression as well as its optional expected type.
+
+### Library documentation links with Lean hovers
+
+For an imported library name, wrap a native role in a Markdown link to keep its
+Lean signature/docstring hover while making it clickable:
+
+```md
+[{InlineLean.name}`List.map`](https://leanprover-community.github.io/mathlib4_docs/Init/Prelude.html#List.map)
+
+[{InlineLean.lean}`List.map Nat.succ`](https://leanprover-community.github.io/mathlib4_docs/Init/Prelude.html#List.map)
+```
+
+These qualified role names work with the standard Blueprint imports and opens.
+`InlineLean.name` displays a declaration name; `InlineLean.lean` elaborates an
+application in the current context. Individual tokens retain their hovers, but
+a link around an application has one click destination. Link names separately
+when they need different destinations. The same composition works in nested
+lists, such as authored glossary entries.
+
+Check that the documentation URL's fragment identifies the intended declaration;
+an HTTP 200 response for its page is not enough. Use this pattern for library
+tokens that are not already in-document links, rather than nesting anchors around
+existing linked references. It does not automatically discover documentation URLs.
+
 ## Attached Rust Code
 
 Blueprint also supports labeled inline Rust code blocks as attached source:
@@ -1127,15 +1174,73 @@ Current behavior:
 
 ### Original Source Provenance
 
+To identify a numbered source item, use the existing theorem or definition
+directive's leading metadata block:
+
+````markdown
+:::theorem "main_result"
+%%%
+paperIdentity := some { label := "Theorem 2", href := "source/paper.pdf#page=4" }
+%%%
+The mathematical statement goes here.
+:::
+````
+
+`paperIdentity` uses `Informal.Reader.PaperIdentity`; its optional `pdfHref`
+adds a second PDF link. Labels must be nonempty and links must use safe source
+URLs (HTTP(S), root-relative, or ordinary relative paths). Relative links resolve
+against the generated site's root. Identity survives imports and previews.
+Repository reader enrichment preserves it for unmapped nodes; an explicit
+repository node mapping takes precedence. Unnumbered calculations should have
+source spans only, not an invented numbered identity. Identity and source spans
+can appear together in the same metadata block.
+
 Blueprint can record a three-level source provenance chain for audit tooling:
 original source document, Verso Blueprint node, and associated Lean material.
 This phase stores the source-document catalog and source spans for each
 statement/proof facet.
 Generated Blueprint node shells show a compact source chip when a node has
 source provenance. The chip opens a lightweight source preview with the
-document id and recorded span details. Fuller source review interfaces such as
+document id and recorded span details. PDF spans have clickable **Page N (PDF)**
+links; these source links do not assign the node a theorem number from the paper.
+Reader enrichment resolves local paths against `Reader.Context.sourceBaseUrl`
+(the anchor's commit-pinned source base). Without enrichment, relative PDF paths
+refer to the generated site's root, including from nested pages: the author or
+runtime must publish those source assets there. The preview does not copy them.
+HTTP(S) and root-relative URLs are retained; unsafe URL schemes are not linked.
+Recorded provenance paths remain unchanged in source metadata and manifests.
+
+`span.page` is a source-page label, not an inferred page index in `pdf.path`.
+The **Page N (PDF)** link uses the authored PDF destination after URL-base
+resolution. For a whole PDF, include the physical one-based destination
+explicitly: use `page := "12"` with
+`pdf := some { path := "/source/paper.pdf#page=16" }` if printed page 12 is
+physical PDF page 16. A one-page extract can instead use
+`path := "/source/pages/page-12.pdf"` without a fragment. Existing named
+destinations and other PDF URL options are preserved.
+
+Fuller source review interfaces such as
 PDF page viewers, crop overlays, and side-by-side text review remain interface
 work for clients or later Blueprint UI.
+
+Exact source-item identities are separate from these spans and from the
+blueprint's automatically assigned definition/theorem numbers. A renderer can
+attach `Informal.Reader.PaperIdentity` through `Informal.BlockData.paperIdentity`:
+
+```lean
+let identity : Informal.Reader.PaperIdentity := {
+  label := "Theorem 2"
+  href := "https://example.org/paper.pdf#page=7"
+}
+let data := { data with paperIdentity := some identity }
+```
+
+This labels a node representing the source's **Theorem 2**. A separate
+calculation in its proof should instead carry its page span, without being
+called another Theorem 2. Do not infer numbered identity merely from a shared
+page, a dependency, or a citation. Unnumbered source material may have source
+provenance and no `paperIdentity`; that does not make it less formalized.
+Audit the identity as well as whether its link works.
 
 Declare source documents with `:::source_document`. The directive body must
 contain exactly one Verso metadata block:
@@ -1879,7 +1984,10 @@ prefixes with document-order block counts.
 
 - `verso.blueprint.foldProofs`
   - default: `true`
-  - folds proof bodies in rendered Lean code panels after `by`
+  - folds proof bodies in rendered Lean code panels after the declaration's
+    outer `:= by`, not at internal `by` arguments in its statement
+  - leaves term-valued proofs and unfamiliar statement syntax unfolded;
+    top-level `let`/`match` statement expressions are conservatively left intact
 - `verso.blueprint.foldProofBlocks`
   - default: `false`
   - renders proof blocks as collapsed disclosure blocks

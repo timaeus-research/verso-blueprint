@@ -21,6 +21,7 @@ import VersoManual.InlineLean.Scopes
 import VersoBlueprint.Data
 import VersoBlueprint.ProvedStatus
 import VersoBlueprint.Profiling
+import VersoBlueprint.OccurrenceInventory
 
 open Verso Doc Elab Genre.Manual
 open Lean Elab
@@ -350,6 +351,11 @@ def elabCommands (config : LeanBlockConfig) (str : StrLit) : DocElabM ElabComman
 
     setEnv cmdState.env
     setScopes cmdState.scopes
+    if !inServer && verso.blueprint.collectOccurrences.get (← getOptions) then
+      let evidence ← liftM <| OccurrenceInventory.collect (← getFileName)
+        (config.name.map Name.toString) config.show cmdState.infoState.trees
+        (verso.blueprint.maxOccurrences.get (← getOptions))
+      modifyEnv fun env => OccurrenceInventory.inventory.addEntry env evidence
     for t in cmdState.infoState.trees do
       pushInfoTree t
 

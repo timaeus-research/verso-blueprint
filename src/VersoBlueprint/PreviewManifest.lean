@@ -510,8 +510,12 @@ def readBuildMetadata : IO BuildMetadata := do
     upstreamBlueprint
   }
 
+private def hasMetadataValue (value : String) : Bool :=
+  let value := value.trimAscii.toString
+  !value.isEmpty && value != unknownMetadataValue
+
 private def buildMetadataLabelHtml (label : String) (href? : Option String) : Output.Html :=
-  match href? with
+  match href?.filter hasMetadataValue with
   | some href =>
       Output.Html.tag "a"
         #[("class", "bp_build_metadata_label bp_build_metadata_link"), ("href", href)]
@@ -519,8 +523,24 @@ private def buildMetadataLabelHtml (label : String) (href? : Option String) : Ou
   | none =>
       Output.Html.tag "span" #[("class", "bp_build_metadata_label")] (VersoBlueprint.Html.text label)
 
+/-- Collapse a pinned SHA repeated in Lake's human-readable version, without changing its data. -/
+private def metadataVersionDisplay (value : String) : String :=
+  match value.splitOn "@" with
+  | [revision, shortRevision] =>
+      if revision.length == 40 && revision.toList.all Char.isHexDigit &&
+          shortRevision.length == 12 && shortRevision == (revision.take 12).copy then shortRevision
+      else value
+  | _ => value
+
+private def hasMetadataRow (value subject : String) (repositoryUrl commitUrl : Option String) : Bool :=
+  hasMetadataValue value || hasMetadataValue subject ||
+    repositoryUrl.any hasMetadataValue || commitUrl.any hasMetadataValue
+
 private def buildMetadataCodeHtml (value : String) (href? : Option String) : Output.Html :=
-  let code := Output.Html.tag "code" #[("class", "bp_build_metadata_commit")] (VersoBlueprint.Html.text value)
+  let href? := href?.filter hasMetadataValue
+  let display := if hasMetadataValue value then metadataVersionDisplay value else "source"
+  if !hasMetadataValue value && href?.isNone then .empty else
+  let code := Output.Html.tag "code" #[("class", "bp_build_metadata_commit")] (VersoBlueprint.Html.text display)
   match href? with
   | some href =>
       Output.Html.tag "a" #[("class", "bp_build_metadata_commit_link"), ("href", href)] code
@@ -530,36 +550,35 @@ def buildMetadataHtml (metadata : BuildMetadata) : Output.Html :=
   open Verso.Output.Html in
   {{
     <div class="bp_build_metadata" aria-label="Build metadata">
-      <span class="bp_build_metadata_item">
+      {{if hasMetadataValue metadata.compiledAt then {{<span class="bp_build_metadata_item">
         <span class="bp_build_metadata_label">"Compiled"</span>
         <span class="bp_build_metadata_value">{{VersoBlueprint.Html.text metadata.compiledAt}}</span>
-      </span>
-      <span class="bp_build_metadata_item">
+      </span>}} else .empty}}
+      {{if hasMetadataRow metadata.commit metadata.subject metadata.projectRepositoryUrl metadata.projectCommitUrl then {{<span class="bp_build_metadata_item">
         {{buildMetadataLabelHtml "Project" metadata.projectRepositoryUrl}}
         {{buildMetadataCodeHtml metadata.commit metadata.projectCommitUrl}}
-        <span class="bp_build_metadata_subject">{{VersoBlueprint.Html.text metadata.subject}}</span>
-      </span>
-      <span class="bp_build_metadata_item">
+        {{if hasMetadataValue metadata.subject then {{<span class="bp_build_metadata_subject">{{VersoBlueprint.Html.text metadata.subject}}</span>}} else .empty}}
+      </span>}} else .empty}}
+      {{if hasMetadataValue metadata.leanToolchain then {{<span class="bp_build_metadata_item">
         <span class="bp_build_metadata_label">"Lean"</span>
         <span class="bp_build_metadata_value">{{VersoBlueprint.Html.text metadata.leanToolchain}}</span>
-      </span>
-      <span class="bp_build_metadata_item">
+      </span>}} else .empty}}
+      {{if hasMetadataRow metadata.blueprintVersion "" metadata.blueprintRepositoryUrl metadata.blueprintCommitUrl then {{<span class="bp_build_metadata_item">
         {{buildMetadataLabelHtml "VersoBlueprint" metadata.blueprintRepositoryUrl}}
         {{buildMetadataCodeHtml metadata.blueprintVersion metadata.blueprintCommitUrl}}
-      </span>
+      </span>}} else .empty}}
       {{if let some upstream := metadata.upstreamBlueprint then
-        {{<span class="bp_build_metadata_item">
+        if hasMetadataRow upstream.commit upstream.subject upstream.repositoryUrl upstream.commitUrl then {{<span class="bp_build_metadata_item">
             {{buildMetadataLabelHtml "Upstream" upstream.repositoryUrl}}
             {{buildMetadataCodeHtml upstream.commit upstream.commitUrl}}
-            <span class="bp_build_metadata_subject">{{VersoBlueprint.Html.text upstream.subject}}</span>
-          </span>}}
+            {{if hasMetadataValue upstream.subject then {{<span class="bp_build_metadata_subject">{{VersoBlueprint.Html.text upstream.subject}}</span>}} else .empty}}
+          </span>}} else .empty
         else .empty}}
-      {{if let some mathlibVersion := metadata.mathlibVersion then
-        {{<span class="bp_build_metadata_item">
+      {{let mathlibVersion := metadata.mathlibVersion.getD ""
+        if hasMetadataRow mathlibVersion "" metadata.mathlibRepositoryUrl metadata.mathlibCommitUrl then {{<span class="bp_build_metadata_item">
             {{buildMetadataLabelHtml "Mathlib" metadata.mathlibRepositoryUrl}}
             {{buildMetadataCodeHtml mathlibVersion metadata.mathlibCommitUrl}}
-          </span>}}
-        else .empty}}
+          </span>}} else .empty}}
     </div>
   }}
 

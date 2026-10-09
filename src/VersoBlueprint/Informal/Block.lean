@@ -140,6 +140,11 @@ private def informalBlockToHtml (renderPreview : PreviewResources.Render := Prev
           markup? := renderExternalMarkupHeaderExtra? markup
           code? := some (HeaderExtra.code codeEntry)
         }
+        -- Verso's <base> handles site-relative source paths; reader enrichment
+        -- may supply an explicit published source base instead.
+        let headerExtras := { headerExtras with
+          source? := renderSourceHeaderExtra? data.sourceRef.toArray
+            (sourceLinkBase data.readerContext ctxt.path.size) }
         return renderInformalBlockModel {
           data
           context := InformalBlockRenderContext.forBlock data
@@ -200,15 +205,22 @@ def Block.withPreviewAvailability (impls : ExtensionImpls)
 
 private structure ParsedDirectiveContents where
   sourceRef? : Option Source.Ref := none
+  paperIdentity : Option Reader.PaperIdentity := none
   body : Array (TSyntax `block) := #[]
 
 private def parseDirectiveSourceMetadata
     (cfg : Config) (contents : Array (TSyntax `block)) : DocElabM ParsedDirectiveContents := do
   let leading ← Source.Metadata.splitLeadingMetadata contents
+  let mut paperIdentity := none
   let sourceRef? ←
     match leading.term? with
     | some term =>
         let metadata ← Source.Metadata.evalNodeMetadataInput term
+        if let some identity := metadata.paperIdentity then
+          if identity.isValid then
+            paperIdentity := some identity
+          else
+            logErrorAt term m!"Label {cfg.label} has invalid paperIdentity metadata: a nonempty label and safe source URLs are required"
         if let some sourceRef := metadata.source? then
           let validationErrors := Source.Ref.validationErrors sourceRef
           for error in validationErrors do
@@ -220,7 +232,7 @@ private def parseDirectiveSourceMetadata
         pure none
   let body ← Source.Metadata.visibleBlocksWithoutMetadata leading.body fun block =>
     logErrorAt block m!"Label {cfg.label} has a metadata block after visible content; Blueprint source metadata must be the first block inside the directive"
-  pure { sourceRef?, body }
+  pure { sourceRef?, paperIdentity, body }
 
 private unsafe def retainElaboratedBlocksUnsafe (stxs : Array (TSyntax `term)) :
     TermElabM (Array (Doc.Block Genre.Manual) × TSyntax `term) := do
@@ -268,7 +280,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         tags := resolved.tags, effort := resolved.effort, prUrl := resolved.prUrl
         issueUrl := resolved.issueUrl
         deps := resolved.statementUses, proofUses := resolved.proofUses } : Environment.InProgress)
-    let some ((retainedContents, sourceRef), count) ← Environment.withDirective prepare blockRef do
+    let some ((retainedContents, sourceRef, paperIdentity), count) ← Environment.withDirective prepare blockRef do
         let parsedContents ← parseDirectiveSourceMetadata cfg contents
         -- Retained bodies are compiled now, before the enclosing document binds its
         -- reconstruction placeholder. Native Lean roles must serialize their hover
@@ -276,7 +288,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         let contents ← (show DocElabM _ from fun ctx =>
           (parsedContents.body.mapM elabBlock) { ctx with docReconstructionPlaceholder := none })
         let (previewBlocks, retainedContents) ← liftM <| retainElaboratedBlocks contents
-        pure ((retainedContents, parsedContents.sourceRef?), previewBlocks)
+        pure ((retainedContents, parsedContents.sourceRef?, parsedContents.paperIdentity), previewBlocks)
       | return ← ``(Block.concat #[])
     let opts ← getOptions
     let sourceLocation :=
@@ -287,6 +299,7 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
     let data : BlockOccurrence := {
       isProof
       sourceRef
+      paperIdentity
       label
       sourceLocation
       foldProofBlock := verso.blueprint.foldProofBlocks.get opts
