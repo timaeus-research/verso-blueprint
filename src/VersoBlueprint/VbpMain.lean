@@ -14,7 +14,7 @@ open System
 namespace VersoBlueprint.Vbp.Main
 
 private def buildUsageLine : String :=
-  "lake exe vbp build [--output <dir>] [--pdf] [--verbose] [--serve] [--port <n>]"
+  "lake exe vbp build [--output <dir>] [--pdf] [--verbose] [--hide-review] [--serve] [--port <n>]"
 
 private def mainCommandLines : List String := [
   "lake exe vbp discover",
@@ -27,6 +27,7 @@ private def defaultHelpLines : List String := [
   "build writes _out/site",
   "--pdf builds _out/site/pdf/main.pdf from the generated TeX",
   "--verbose shows Blueprint generation phase progress during build",
+  "--hide-review renders annotation boxes without review badges",
   "query and check read _out/site",
   "--serve serves the generated html-multi directory after a successful build",
   "--serve --port <n> serves on a fixed port"
@@ -38,6 +39,7 @@ private def buildOptionLines : List String := [
   "--pdf-engine <cmd>  Use <cmd> for PDF compilation",
   "--pdf-runs <n>      Run the PDF engine <n> times",
   "--verbose           Show Blueprint generation phase progress",
+  "--hide-review       Render annotation boxes without review badges",
   "--serve             Serve the generated html-multi directory after build",
   "--port <n>          Serve on a fixed TCP port; requires --serve"
 ]
@@ -261,6 +263,7 @@ structure BuildOptions where
   pdfEngine? : Option String := none
   pdfRuns? : Option Nat := none
   verbose : Bool := false
+  hideReview : Bool := false
   serve : Bool := false
   port? : Option Nat := none
 
@@ -310,6 +313,7 @@ private partial def parseBuildOptionsCore : List String → BuildOptions → Exc
       else
         match arg, args with
         | "--verbose", args => parseBuildOptionsCore args { opts with verbose := true }
+        | "--hide-review", args => parseBuildOptionsCore args { opts with hideReview := true }
         | "--serve", args => parseBuildOptionsCore args { opts with serve := true }
         | "--port", raw :: args =>
             match parseTcpPort raw with
@@ -386,7 +390,9 @@ private def generateSite (opts : BuildOptions) : IO UInt32 := do
       IO.eprintln err
       pure 1
   | .ok context =>
-      let args := generatorLeanArgs context.generatorFile opts.output opts.verbose ++ pdfGeneratorArgs opts
+      let args := generatorLeanArgs context.generatorFile opts.output opts.verbose ++
+        pdfGeneratorArgs opts ++
+        (if opts.hideReview then #[Informal.ReviewLedger.hideReviewFlag] else #[])
       runGenerator context args
 
 private def serveScript : String := String.intercalate "\n" [

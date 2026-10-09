@@ -10,6 +10,7 @@ import VersoManual
 import VersoBlueprint.Docstring
 import VersoBlueprint.Lib.HtmlId
 import VersoBlueprint.Macros
+import VersoBlueprint.SourceRelation
 
 open Lean Meta
 
@@ -23,6 +24,13 @@ register_option verso.blueprint.externalCode.showUniverses : Bool := {
   defValue := false
   descr := "Show the universe parameter list (`.{u_1, u_2}`) after the name of an external Lean " ++
     "declaration"
+}
+
+register_option verso.blueprint.externalCode.docsBaseUrl : String := {
+  defValue := "https://leanprover-community.github.io/mathlib4_docs/"
+  descr := "Base URL of the published API documentation that constants of Lean core, Std, Lake, " ++
+    "Mathlib and Mathlib's dependencies link to when no blueprint node presents them; empty " ++
+    "disables these links"
 }
 
 namespace Informal
@@ -43,6 +51,95 @@ def shortenName (opens : List Name) (n : Name) : Name :=
 
 
 abbrev ExternalDeclHtml := Verso.Output.Html
+
+/-! ## Declaration links
+
+A constant in rendered declaration code links to the blueprint node that presents it. Which node
+that is becomes known only when the whole document has been traversed, long after the declaration
+was rendered (at elaboration of its chapter), so the rendered HTML carries a marker around each
+constant token and the page renderer resolves the markers (`rewriteDeclLinks`). The token is
+preceded by the HTML comment `bp-decl:NAME|DOCS` and followed by the comment `/bp-decl`.
+`NAME` is the constant's full name and `DOCS` the URL of its entry in the published API
+documentation, or empty (both with `%`, `-`, `>` and `|` percent-encoded). A marker whose name
+resolves to a node becomes a link to that node's rendering of the declaration; otherwise one with
+a documentation URL links there; otherwise the marker is dropped and the token keeps only its hover.
+-/
+
+/-- Module roots documented at `verso.blueprint.externalCode.docsBaseUrl` (Mathlib's API docs). -/
+def docsModuleRoots : List Name :=
+  [`Init, `Std, `Lean, `Lake, `Mathlib, `Batteries, `Aesop, `Qq, `ProofWidgets, `Plausible,
+    `ImportGraph, `LeanSearchClient]
+
+/--
+The URL of `decl` in the published API documentation at `baseUrl` (doc-gen4 layout: one page per
+module, the declaration's full name as anchor), when `decl` is a public constant of a module under
+one of `docsModuleRoots` and not an auxiliary recursor (which doc-gen4 does not document).
+
+The published documentation follows Mathlib's master branch, not the Mathlib a project pins, so a
+declaration that has since moved to another module or been renamed gets a link to a page without
+its anchor, or to no page.
+-/
+def docsHref? (env : Environment) (baseUrl : String) (decl : Name) : Option String := do
+  if baseUrl.isEmpty || decl.isInternal || isPrivateName decl || isAuxRecursor env decl ||
+      isNoConfusion env decl then none
+  let idx ← env.getModuleIdxFor? decl
+  let mod ← env.header.moduleNames[idx.toNat]?
+  unless docsModuleRoots.contains mod.getRoot do none
+  let base := if baseUrl.endsWith "/" then baseUrl else baseUrl ++ "/"
+  let path := "/".intercalate (mod.components.map (·.toString (escape := false)))
+  some s!"{base}{path}.html#{decl}"
+
+private def declMarkerEncode (s : String) : String :=
+  s.replace "%" "%25" |>.replace "-" "%2D" |>.replace ">" "%3E" |>.replace "|" "%7C"
+
+private def declMarkerDecode (s : String) : String :=
+  s.replace "%7C" "|" |>.replace "%3E" ">" |>.replace "%2D" "-" |>.replace "%25" "%"
+
+private def declMarkerOpenPrefix : String := "<!--bp-decl:"
+private def declMarkerClose : String := "<!--/bp-decl-->"
+private def declLinkPlaceholderPrefix : String := "bp-decl:"
+
+private def escapeHtmlAttr (s : String) : String :=
+  s.replace "&" "&amp;" |>.replace "\"" "&quot;" |>.replace "<" "&lt;" |>.replace ">" "&gt;"
+
+/--
+Resolve the declaration-link markers of rendered declaration HTML. `declHref` maps a constant's
+full name (`Name.toString`) to the page link of the node presenting it.
+-/
+def rewriteDeclLinks (html : String) (declHref : String → Option String) : String :=
+  match html.splitOn declMarkerOpenPrefix with
+  | [] => html
+  | first :: rest =>
+    rest.foldl (init := first) fun out part =>
+      match part.splitOn "-->" with
+      | header :: afterHeader =>
+        let body := "-->".intercalate afterHeader
+        let (name, docs) :=
+          match header.splitOn "|" with
+          | [n, d] => (declMarkerDecode n, declMarkerDecode d)
+          | _ => (declMarkerDecode header, "")
+        let href? : Option (String × String) :=
+          match declHref name with
+          | some href => some (href, "bp_decl_link")
+          | none => if docs.isEmpty then none else some (docs, "bp_decl_link bp_decl_link_docs")
+        let (openTag, closeTag) :=
+          match href? with
+          | some (href, cls) => (s!"<a class=\"{cls}\" href=\"{escapeHtmlAttr href}\">", "</a>")
+          | none => ("", "")
+        let body :=
+          match body.splitOn declMarkerClose with
+          | [] => body
+          | inner :: after => inner ++ closeTag ++ declMarkerClose.intercalate after
+        out ++ openTag ++ body
+      | [] => out ++ part
+
+/-- Link targets that mark every constant token (see `rewriteDeclLinks`). -/
+private def declLinkTargets (env : Environment) (docsBaseUrl : String) :
+    Verso.Code.LinkTargets Verso.Genre.Manual.TraverseContext where
+  const n _ :=
+    #[{ shortDescription := "decl"
+        description := (docsHref? env docsBaseUrl n).getD ""
+        href := declLinkPlaceholderPrefix ++ n.toString }]
 
 inductive ExternalDeclRenderError where
   | moduleUnavailable (decl : Name)
@@ -189,14 +286,21 @@ private partial def rewriteExternalDeclHoverTemplateLoop
                 if replacement.isEmpty then parts else parts.push replacement
               rewriteExternalDeclHoverTemplateLoop html rewrites nextPos parts
 
+/--
+The page form of the template: hover ids rewritten by `rewrites`, declaration-link markers resolved
+by `declHref` (see `rewriteDeclLinks`).
+-/
 def ExternalDeclRenderedHtml.rewriteHovers
     (rendered : ExternalDeclRenderedHtml)
-    (rewrites : Array ExternalDeclHoverRewrite) : String :=
+    (rewrites : Array ExternalDeclHoverRewrite)
+    (declHref : String → Option String := fun _ => none) : String :=
+  let html := rewriteDeclLinks rendered.html declHref
   String.join <|
-    (rewriteExternalDeclHoverTemplateLoop rendered.html rewrites rendered.html.startPos #[]).toList
+    (rewriteExternalDeclHoverTemplateLoop html rewrites html.startPos #[]).toList
 
-def ExternalDeclRenderedHtml.selfContained (rendered : ExternalDeclRenderedHtml) : String :=
-  rendered.rewriteHovers <|
+def ExternalDeclRenderedHtml.selfContained (rendered : ExternalDeclRenderedHtml)
+    (declHref : String → Option String := fun _ => none) : String :=
+  rendered.rewriteHovers (declHref := declHref) <|
     rendered.hoverPayloads.map fun payload => {
       localId := payload.localId
       attrReplacement := ""
@@ -206,10 +310,12 @@ def ExternalDeclRenderedHtml.selfContained (rendered : ExternalDeclRenderedHtml)
 abbrev ExternalDeclRenderResult := Except ExternalDeclRenderError ExternalDeclRenderedHtml
 
 private abbrev ExternalDeclHighlightRender :=
-  StateT (Verso.Code.Hover.State ExternalDeclHtml) Id
+  ReaderT (Verso.Code.HighlightHtmlM.Context Verso.Genre.Manual)
+    (StateT (Verso.Code.Hover.State ExternalDeclHtml) Id)
 
-private def highlightedHtmlContext : Verso.Code.HighlightHtmlM.Context Verso.Genre.Manual := {
-  linkTargets := {}
+private def highlightedHtmlContext (env : Environment) (docsBaseUrl : String) :
+    Verso.Code.HighlightHtmlM.Context Verso.Genre.Manual := {
+  linkTargets := declLinkTargets env docsBaseUrl
   traverseContext := {}
   definitionIds := {}
   options := {}
@@ -218,8 +324,9 @@ private def highlightedHtmlContext : Verso.Code.HighlightHtmlM.Context Verso.Gen
 private def runHighlightedHtml
     (html : Verso.Code.HighlightHtmlM Verso.Genre.Manual ExternalDeclHtml) :
     ExternalDeclHighlightRender ExternalDeclHtml := do
+  let ctx ← read
   let hoverState ← get
-  let (html, hoverState) := ((html.run highlightedHtmlContext).run hoverState)
+  let (html, hoverState) := ((html.run ctx).run hoverState)
   set hoverState
   pure html
 
@@ -247,6 +354,15 @@ private def templateVersoHoverAttrs
         | some localId =>
             contents ++ .tag "span" #[(externalDeclHoverInlineMarkerAttrName, toString localId)] .empty
         | none => contents
+      -- A constant's placeholder link (`declLinkTargets`) becomes a declaration-link marker.
+      if name == "a" then
+        if let some href := attrs.find? (·.1 == "href") |>.map (·.2) then
+          if href.startsWith declLinkPlaceholderPrefix then
+            let decl := (href.drop declLinkPlaceholderPrefix.length).toString
+            let docs := (attrs.find? (·.1 == "title") |>.map (·.2)).getD ""
+            let header :=
+              s!"{declMarkerOpenPrefix}{declMarkerEncode decl}|{declMarkerEncode docs}-->"
+            return some <| .seq #[.text false header, contents, .text false declMarkerClose]
       pure <| some <| .tag name attrs' contents)
 
 private def hoverPayloads
@@ -271,8 +387,9 @@ lookup scheme for every highlighted token payload, duplicating Verso's page
 dedup table instead of using it.
 -/
 private def renderWithHoverPayloads
+    (ctx : Verso.Code.HighlightHtmlM.Context Verso.Genre.Manual)
     (html : ExternalDeclHighlightRender ExternalDeclHtml) : ExternalDeclRenderedHtml :=
-  let (html, hoverState) := html.run {}
+  let (html, hoverState) := (html.run ctx).run {}
   {
     html := (templateVersoHoverAttrs html hoverState.dedup).asString
     hoverPayloads := hoverPayloads hoverState.dedup
@@ -326,11 +443,14 @@ private def internalDocstringHtml
   | some (.inr doc) => structuralDocstringHtml doc texPrelude
   | none => plainDocstringHtml fallback?
 
+/-- With `stripSourceRelation`, a Markdown docstring is shown without its "Relation to the
+source." section (`SourceRelation.stripSection`). -/
 private def docstringHtmlForDecl
     (env : Lean.Environment) (decl : Name)
-    (fallback? : Option String) (texPrelude : String) :
+    (fallback? : Option String) (texPrelude : String) (stripSourceRelation : Bool := false) :
     MetaM ExternalDeclHtml := do
   let doc? ← liftM <| findInternalDocString? env decl
+  let doc? := if stripSourceRelation then doc?.map (·.map SourceRelation.stripSection id) else doc?
   pure <| internalDocstringHtml doc? fallback? texPrelude
 
 private def docsHtml (doc : ExternalDeclHtml) : ExternalDeclHtml :=
@@ -671,7 +791,8 @@ private def renderDeclHtmlDocstringFromInfoE
     (decl : Name) (cinfo : ConstantInfo)
     (headerBadge? : Option ExternalDeclHeaderBadge := none)
     (headerSource? : Option ExternalDeclHeaderSource := none)
-    (showBody : Bool := true) (showUniverses : Bool := false) : MetaM ExternalDeclRenderResult :=
+    (showBody : Bool := true) (showUniverses : Bool := false)
+    (stripSourceRelation : Bool := false) : MetaM ExternalDeclRenderResult :=
   open Verso.Output.Html in do
   let env ← getEnv
   let declType ←
@@ -679,10 +800,12 @@ private def renderDeclHtmlDocstringFromInfoE
       Verso.Genre.Manual.Block.Docstring.DeclType.ofName decl (hideStructureConstructor := true)
   let signature ← signatureWithBody decl cinfo showBody showUniverses
   let texPrelude ← Informal.Macros.getTexPrelude
-  let docstring ← docstringHtmlForDecl env decl none texPrelude
+  -- The node shows the "Relation to the source." items as annotation boxes.
+  let docstring ← docstringHtmlForDecl env decl none texPrelude stripSourceRelation
   let nestedDocstrings ← nestedDocstrings env declType texPrelude
+  let docsBaseUrl := verso.blueprint.externalCode.docsBaseUrl.get (← getOptions)
 
-  let rendered := renderWithHoverPayloads <| do
+  let rendered := renderWithHoverPayloads (highlightedHtmlContext env docsBaseUrl) <| do
     let ctorSection? : Option ExternalDeclHtml ←
       match declType with
       | .structure isClass ctor? _ _ _ _ =>
@@ -746,16 +869,19 @@ private def renderDeclHtmlDocstringFromInfoE
 /--
 Render one declaration directly from known declaration facts.
 Errors represent rendering failures only; declaration lookup is handled by callers.
+With `stripSourceRelation`, the docstring is shown without its "Relation to the source." section
+(`SourceRelation.stripSection`), which the embedding node renders as annotation boxes.
 -/
 def renderDeclHtmlDirectFromInfoE
     (decl : Name) (cinfo : ConstantInfo)
     (headerBadge? : Option ExternalDeclHeaderBadge := none)
     (headerSource? : Option ExternalDeclHeaderSource := none)
-    (showBody : Bool := true) (showUniverses : Bool := false) : MetaM ExternalDeclRenderResult := do
+    (showBody : Bool := true) (showUniverses : Bool := false)
+    (stripSourceRelation : Bool := false) : MetaM ExternalDeclRenderResult := do
   try
     renderDeclHtmlDocstringFromInfoE decl cinfo
       (headerBadge? := headerBadge?) (headerSource? := headerSource?) (showBody := showBody)
-      (showUniverses := showUniverses)
+      (showUniverses := showUniverses) (stripSourceRelation := stripSourceRelation)
   catch ex =>
     return .error (.exception decl (← ex.toMessageData.toString))
 

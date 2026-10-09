@@ -635,6 +635,47 @@ def saveId
 
 end ExternalDeclAnchors
 
+namespace CanonicalDecls
+
+def spec : StoreSpec := {
+  name := Resolve.canonicalDeclDomainName
+  kind := .internalIndex
+  key := "canonical external declaration name"
+  value := "label of the canonical presenting node and whether it is a definition node"
+  summary := "Traversal-local index of the node that declaration links resolve to."
+}
+
+def domainName : Name := spec.name
+
+/-- The canonical node recorded for one declaration. -/
+structure Entry where
+  label : Data.Label
+  /-- The declaration's name, which the domain key holds only as `Name.toString`. -/
+  decl : Name
+  definition : Bool
+deriving ToJson, FromJson, Repr, BEq
+
+def data? (state : TraverseState) (decl : Name) : Option Entry :=
+  objectData? state domainName decl.toString
+
+/--
+Record that the node `label` presents `decl`. The first node recorded wins, except that a
+definition node replaces a non-definition node; repeated traversal passes keep the choice.
+-/
+def register (state : TraverseState) (decl : Name) (label : Data.Label) (definition : Bool) :
+    TraverseState :=
+  let replace :=
+    match data? state decl with
+    | none => true
+    | some existing => definition && !existing.definition
+  if replace then
+    let entry : Entry := { label, decl, definition }
+    saveObjectData state domainName decl.toString (toJson entry)
+  else
+    state
+
+end CanonicalDecls
+
 namespace CitationPreviews
 
 def spec : StoreSpec := {
@@ -772,6 +813,7 @@ def allSpecs : Array StoreSpec := #[
   TraversalPreviews.spec,
   LeanCodePreviews.spec,
   ExternalDeclAnchors.spec,
+  CanonicalDecls.spec,
   CitationPreviews.spec,
   Bibliography.spec,
   CitationUsages.spec,

@@ -30,6 +30,7 @@ import VersoBlueprint.Informal.ExternalMarkupRender
 import VersoBlueprint.Lib.ExtensionDecode
 import VersoBlueprint.Resolve
 import VersoBlueprint.RenderingResolution
+import VersoBlueprint.SourceAnnotations
 import VersoBlueprint.Source.Metadata
 import VersoBlueprint.TeX
 import VersoBlueprint.TraversalIndex
@@ -84,10 +85,13 @@ private def informalBlockToHtml (renderPreview : PreviewResources.Render := Prev
           else data
         let markup :=
           (Informal.TraversalIndex.ExternalMarkup.data? s data.label).map (·.markup.toArray) |>.getD #[]
+        -- The boxes taken from docstrings do not count as a body of the node: a node whose only
+        -- blocks are those boxes still shows its external markup, followed by the boxes.
+        let sourceItemBlocks := blocks.filter Editorial.isSourceItemBlock
         let selectedMarkupAndContent? :=
           match data.isProof with
           | false =>
-              if blocks.isEmpty then
+              if blocks.all Editorial.isSourceItemBlock then
                 Informal.ExternalMarkupRender.selectedContent? {} markup
               else
                 none
@@ -133,10 +137,11 @@ private def informalBlockToHtml (renderPreview : PreviewResources.Render := Prev
                 getDeclHref
                 getDeclAnchorAttrs
                 (folded := data.foldCodeBlock)
+                (declHref := Resolve.resolveCanonicalDeclHref? s)
           | true => pure .empty
         let content ←
           match selectedMarkupAndContent? with
-          | some (_, selectedContent) => pure selectedContent
+          | some (_, selectedContent) => pure (selectedContent ++ (← sourceItemBlocks.mapM goB))
           | none => blocks.mapM goB
         let codeEntry := (headingParts?.map (·.codeEntry)).getD .empty
         let usesEntry := RelatedPanel.renderUsesExtra s data renderPreview
@@ -293,6 +298,13 @@ private def expanderImpl (kind : Data.NodeKind) (isProof : Bool := false) : Dire
         -- data directly so these independently evaluated blocks remain closed.
         let contents ← (show DocElabM _ from fun ctx =>
           (parsedContents.body.mapM elabBlock) { ctx with docReconstructionPlaceholder := none })
+        -- The "Relation to the source." items of the embedded declarations' docstrings, as
+        -- annotation boxes under the statement.
+        let contents ←
+          match (Environment.informalExt.getState (← getEnv)).activeDirective.bind (·.codeHint) with
+          | some (.external refs) =>
+            pure (contents ++ (← SourceAnnotations.termsForRefs cfg.labelSyntax refs))
+          | _ => pure contents
         let (previewBlocks, retainedContents) ← liftM <| retainElaboratedBlocks contents
         pure ((retainedContents, parsedContents.sourceRef?, parsedContents.paperIdentity), previewBlocks)
       | return ← ``(Block.concat #[])

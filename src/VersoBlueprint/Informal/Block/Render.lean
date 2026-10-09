@@ -833,7 +833,7 @@ def renderInformalBlockHtml (data : BlockData) (ctx : InformalBlockRenderContext
           code.literateDeclarations.declarations.map (fun (d : CodeDeclData) => d.name.toString) ++
             code.externalDecls.map (fun (d : Data.ExternalRef) => d.canonical.toString)
         | none => #[]
-      let details := (data.paperIdentity.map ("Paper: " ++ ·.label)).getD "" ++
+      let details := (data.paperIdentity.map ("Source: " ++ ·.label)).getD "" ++
         (if decls.isEmpty then "" else "\nLean: " ++ String.intercalate ", " decls.toList) ++
         (if data.isProof then "\nBlock: proof" else "")
       { headerExtras with custom := headerExtras.custom.push <|

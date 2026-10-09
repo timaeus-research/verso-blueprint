@@ -25,6 +25,9 @@ import VersoBlueprint.Math
 import VersoBlueprint.Rust
 import VersoBlueprint.Source
 import VersoBlueprint.Editorial
+import VersoBlueprint.SourceRelation
+import VersoBlueprint.ReviewLedger
+import VersoBlueprint.SourceAnnotations
 import VersoBlueprint.Environment
 import VersoBlueprint.DependencyAnalysis
 import VersoBlueprint.Attribute
@@ -48,6 +51,7 @@ import VersoBlueprint.Informal.GroupData
 import VersoBlueprint.Informal.Group
 import VersoBlueprint.Informal.Author
 import VersoBlueprint.Informal.Uses
+import VersoBlueprint.Informal.DeclRef
 import VersoBlueprint.ExternalDeclRender
 import VersoBlueprint.LeanNamesLegend
 import VersoBlueprint.Lean

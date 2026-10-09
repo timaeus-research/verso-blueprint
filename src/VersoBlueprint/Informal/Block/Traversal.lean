@@ -159,6 +159,11 @@ private def registerTraversedBlockAssets
   registerExternalCodePreviews id externalDecls
   if showsCode then
     registerExternalDeclAnchors id blockData.label externalDecls
+  let definition := !blockData.isProof && blockData.kind == .definition
+  for decl in externalDecls do
+    if decl.present then
+      modify fun s =>
+        Informal.TraversalIndex.CanonicalDecls.register s decl.canonical blockData.label definition
 
 /--
 Resolve and register one decoded informal occurrence through the shared traversal path.
