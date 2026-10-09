@@ -13,7 +13,34 @@ import VersoBlueprint.Macros
 
 open Lean Meta
 
+register_option verso.blueprint.externalCode.definitionBodies : Bool := {
+  defValue := true
+  descr := "Show the body of a plain definition (not a theorem, instance, structure or inductive) " ++
+    "after its signature when rendering an external Lean declaration"
+}
+
+register_option verso.blueprint.externalCode.showUniverses : Bool := {
+  defValue := false
+  descr := "Show the universe parameter list (`.{u_1, u_2}`) after the name of an external Lean " ++
+    "declaration"
+}
+
 namespace Informal
+
+/--
+`n` relative to the open namespaces: the longest open namespace that is a proper prefix of `n` is
+dropped, so that the name reads as it would in a file with those `open`s (`GreyBook.LearningSetup.Kn`
+under `open GreyBook` is `LearningSetup.Kn`).
+-/
+def shortenName (opens : List Name) (n : Name) : Name :=
+  let candidates := opens.filter fun ns => ns.isPrefixOf n && ns != n
+  match candidates.foldl (fun best ns =>
+      match best with
+      | none => some ns
+      | some b => if ns.getNumParts > b.getNumParts then some ns else some b) none with
+  | some ns => n.replacePrefix ns .anonymous
+  | none => n
+
 
 abbrev ExternalDeclHtml := Verso.Output.Html
 
@@ -556,16 +583,101 @@ private def renderExternalDeclHeaderMeta
   | _ => pure ()
   return items
 
+/--
+Highlighted code from a `Format` with position information, laid out at `width` columns: the
+pipeline of `Verso.Genre.Manual.Signature.forName` (`tagCodeInfos`, SubVerso's `renderTagged`).
+-/
+private def highlightFormat (fwi : FormatWithInfos) (width : Nat) :
+    MetaM SubVerso.Highlighting.Highlighted := do
+  let ctx : Elab.ContextInfo := {
+    env           := (← getEnv)
+    mctx          := (← getMCtx)
+    options       := (← getOptions)
+    currNamespace := (← getCurrNamespace)
+    openDecls     := (← getOpenDecls)
+    fileMap       := default
+    ngen          := (← getNGen)
+  }
+  let tagged ← Lean.Widget.tagCodeInfos ctx fwi.infos
+    (Lean.Widget.TaggedText.prettyTagged (w := width) fwi.fmt)
+  let hlCtx : SubVerso.Highlighting.Context := ⟨{}, false, false, [], false, (← IO.mkRef {})⟩
+  (SubVerso.Highlighting.renderTagged none tagged :
+    ReaderT SubVerso.Highlighting.Context MetaM _) hlCtx
+
+/--
+The body of a plain definition, pretty-printed under its binders as highlighted code at the given
+width, laid out as the continuation ` :=\n  …` of the signature. `none` for everything that is not a
+plain definition: theorems (proof terms), instances, structures, inductives, axioms and opaques.
+
+The binders are opened with `lambdaTelescope`, so the body refers to the same names the signature
+shows. Hovers are produced exactly as for the signature (`tagCodeInfos` followed by SubVerso's
+`renderTagged`).
+-/
+private def definitionBodyHighlighted? (cinfo : ConstantInfo) (width : Nat) :
+    MetaM (Option SubVerso.Highlighting.Highlighted) := do
+  let .defnInfo defn := cinfo | return none
+  if ← Meta.isInstance defn.name then return none
+  lambdaTelescope defn.value fun _ body => do
+    let (⟨fmt, infos⟩ : FormatWithInfos) ←
+      withOptions (·.setBool `pp.tagAppFns true) <| PrettyPrinter.ppExprWithInfos body
+    let fmt := Format.text " :=" ++ Format.nest 2 (Format.line ++ fmt)
+    return some (← highlightFormat ⟨fmt, infos⟩ width)
+
+private def stripInfoSyntax : Syntax → Syntax
+  | .ident _ substr x pre => .ident .none substr x pre
+  | .node _ kind args => .node .none kind (args.map stripInfoSyntax)
+  | .atom _ x => .atom .none x
+  | .missing => .missing
+
+private def stripRootPrefixSyntax (stx : Syntax) : Syntax :=
+  stx.rewriteBottomUp fun
+    | .ident info substr x pre => .ident info substr (x.replacePrefix `_root_ .anonymous) pre
+    | s => s
+
+/--
+The declaration header without its universe parameter list: Verso's `Signature.forName` prints
+`Full.Name.{u_1, u_2} (binders) : type`; this is the same delaboration with `universes := false`,
+the name written relative to the open namespaces (as the binders and body are), without its own
+hover (no link from a declaration to itself), laid out at both widths.
+-/
+private def signatureWithoutUniverses (decl : Name) : MetaM Verso.Genre.Manual.Signature := do
+  let cinfo ← getConstInfo decl
+  let e := Expr.const decl (cinfo.levelParams.map mkLevelParam)
+  let (stx, infos) ← withOptions (·.setBool `pp.tagAppFns true) <|
+    PrettyPrinter.delabCore e
+      (delab := PrettyPrinter.Delaborator.delabConstWithSignature (universes := false))
+  let stx := stripRootPrefixSyntax stx.raw
+  let opens : List Name := (← getOpenDecls).filterMap fun
+    | .simple ns _ => some ns
+    | .explicit .. => none
+  let stx := stx.setArg 0 (mkIdent (shortenName opens decl))
+  let fmt ← PrettyPrinter.ppTerm ⟨stx⟩
+  let fwi : FormatWithInfos := ⟨fmt, infos⟩
+  return { wide := ← highlightFormat fwi 72, narrow := ← highlightFormat fwi 42 }
+
+/-- The signature of `decl` extended by the body of the definition, when there is one to show. -/
+private def signatureWithBody (decl : Name) (cinfo : ConstantInfo) (showBody showUniverses : Bool) :
+    MetaM Verso.Genre.Manual.Signature := do
+  let signature ←
+    if showUniverses then Verso.Genre.Manual.Signature.forName decl
+    else signatureWithoutUniverses decl
+  if !showBody then return signature
+  match ← definitionBodyHighlighted? cinfo 72, ← definitionBodyHighlighted? cinfo 42 with
+  | some bodyWide, some bodyNarrow =>
+    return { wide := signature.wide ++ bodyWide, narrow := signature.narrow ++ bodyNarrow }
+  | _, _ => return signature
+
 private def renderDeclHtmlDocstringFromInfoE
     (decl : Name) (cinfo : ConstantInfo)
     (headerBadge? : Option ExternalDeclHeaderBadge := none)
-    (headerSource? : Option ExternalDeclHeaderSource := none) : MetaM ExternalDeclRenderResult :=
+    (headerSource? : Option ExternalDeclHeaderSource := none)
+    (showBody : Bool := true) (showUniverses : Bool := false) : MetaM ExternalDeclRenderResult :=
   open Verso.Output.Html in do
   let env ← getEnv
   let declType ←
     withOptions (verso.docstring.allowMissing.set · true) <|
       Verso.Genre.Manual.Block.Docstring.DeclType.ofName decl (hideStructureConstructor := true)
-  let signature ← Verso.Genre.Manual.Signature.forName decl
+  let signature ← signatureWithBody decl cinfo showBody showUniverses
   let texPrelude ← Informal.Macros.getTexPrelude
   let docstring ← docstringHtmlForDecl env decl none texPrelude
   let nestedDocstrings ← nestedDocstrings env declType texPrelude
@@ -638,10 +750,12 @@ Errors represent rendering failures only; declaration lookup is handled by calle
 def renderDeclHtmlDirectFromInfoE
     (decl : Name) (cinfo : ConstantInfo)
     (headerBadge? : Option ExternalDeclHeaderBadge := none)
-    (headerSource? : Option ExternalDeclHeaderSource := none) : MetaM ExternalDeclRenderResult := do
+    (headerSource? : Option ExternalDeclHeaderSource := none)
+    (showBody : Bool := true) (showUniverses : Bool := false) : MetaM ExternalDeclRenderResult := do
   try
     renderDeclHtmlDocstringFromInfoE decl cinfo
-      (headerBadge? := headerBadge?) (headerSource? := headerSource?)
+      (headerBadge? := headerBadge?) (headerSource? := headerSource?) (showBody := showBody)
+      (showUniverses := showUniverses)
   catch ex =>
     return .error (.exception decl (← ex.toMessageData.toString))
 
@@ -652,7 +766,10 @@ def renderDeclHtmlNodeDirect? (decl : Name) : MetaM (Option ExternalDeclHtml) :=
     let env ← getEnv
     let some cinfo := env.find? decl
       | return none
-    match ← renderDeclHtmlDirectFromInfoE decl cinfo with
+    let showBody := verso.blueprint.externalCode.definitionBodies.get (← getOptions)
+    let showUniverses := verso.blueprint.externalCode.showUniverses.get (← getOptions)
+    match ← renderDeclHtmlDirectFromInfoE decl cinfo (showBody := showBody)
+        (showUniverses := showUniverses) with
     | .ok html => return some (.text false html.selfContained)
     | .error err =>
       logError m!"External declaration rendering failed for {decl}: {err.message}"

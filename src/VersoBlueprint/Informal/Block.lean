@@ -75,7 +75,13 @@ private def informalBlockToHtml (renderPreview : PreviewResources.Render := Prev
           | pure .empty
         let data := { data with
           hasFormalizationTodo := data.hasFormalizationTodo || blocks.any Editorial.hasFormalizationTodo ||
-            (Informal.TraversalIndex.Nodes.occurrence? s data.label).any (·.hasFormalizationTodo) }
+            (Informal.TraversalIndex.Nodes.occurrence? s data.label).any
+              (fun (stored : BlockOccurrence) => stored.hasFormalizationTodo) }
+        let data : BlockData := if data.legendInKicker then
+            { data with codeData := data.codeData.map fun (code : BlockCodeData) => { code with
+                externalDecls := code.externalDecls.map fun (ref : Data.ExternalRef) =>
+                  { ref with legendInKicker := true } } }
+          else data
         let markup :=
           (Informal.TraversalIndex.ExternalMarkup.data? s data.label).map (·.markup.toArray) |>.getD #[]
         let selectedMarkupAndContent? :=

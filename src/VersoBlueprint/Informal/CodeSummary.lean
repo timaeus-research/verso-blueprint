@@ -213,7 +213,7 @@ private def externalDeclSummaryItems (decls : Array Data.ExternalRef)
     (hrefOf : Name → Option String) : Array DeclSummaryItem :=
   decls.map fun decl =>
     {
-      displayName := decl.written
+      displayName := decl.displayName
       previewName := decl.canonical
       href := externalDeclHref decl hrefOf
       kind := externalSummaryKind decl

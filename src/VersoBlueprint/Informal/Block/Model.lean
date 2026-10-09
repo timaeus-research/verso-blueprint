@@ -247,6 +247,9 @@ structure BlockPresentation where
   readerContext : Option Reader.Context := none
   /-- Derived from native child blocks during traversal, not an author verdict. -/
   hasFormalizationTodo : Bool := false
+  /-- Set by `Informal.LeanNamesLegend.prepare` when this page's declarations saw different open
+  namespaces: each rendered external declaration row then states its own. -/
+  legendInKicker : Bool := false
   /-- Optional original-source provenance attached with directive-local metadata. -/
   sourceRef : Option Source.Ref := none
   /-- Source location for this rendered occurrence, ordinarily the user-written label token. -/
