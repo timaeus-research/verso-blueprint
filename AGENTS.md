@@ -3,8 +3,9 @@
 ## Timaeus fork
 
 This repository is the Timaeus fork of `leanprover/verso-blueprint`, developed
-on one branch per Lean release: `timaeus/v4.34.0` (toolchain
-`leanprover/lean4:v4.34.0`) is the newest, `timaeus/v4.33.1` serves Lean 4.33.1.
+on one branch per Lean release: `timaeus/v4.35.0` (toolchain
+`leanprover/lean4:v4.35.0`) is the newest; `timaeus/v4.34.0` and `timaeus/v4.33.1`
+serve Lean 4.34.0 and 4.33.1.
 Consumers such as `timaeus-research/greybook` pin a commit of one of them.
 From 9 to 22 September 2026 the package was vendored inside
 `timaeus-research/anchors` (`vendor/verso-blueprint`); that copy is an archive

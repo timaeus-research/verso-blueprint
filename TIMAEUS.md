@@ -2,8 +2,9 @@
 
 This repository is the Timaeus fork of
 [leanprover/verso-blueprint](https://github.com/leanprover/verso-blueprint). Development
-happens here, on one branch per Lean release, `timaeus/v4.34.0` the newest; consumers pin a commit
-of the branch for their toolchain. `timaeus/v4.33.1` is kept for consumers on Lean 4.33.1.
+happens here, on one branch per Lean release, `timaeus/v4.35.0` the newest; consumers pin a commit
+of the branch for their toolchain. `timaeus/v4.34.0` and `timaeus/v4.33.1` are kept for consumers
+on those releases.
 
 ## Provenance
 
@@ -22,11 +23,17 @@ of the branch for their toolchain. `timaeus/v4.33.1` is kept for consumers on Le
   data), so the fork's per-block fields (paper identity, reader context, formalisation TODO,
   `legendInKicker`) are now occurrence fields (`BlockPresentation`), and the open-namespace
   legend reads external declarations from the captured render model.
-- Toolchain: `leanprover/lean4:v4.34.0`. Upstream's branch moved from 4.34.0-rc2 straight to
-  4.34.1; its dependency pins (`verso` at the post-rc2 split-page anchor fix `52c8c955`,
-  `verso-slides` `v4.34.0-rc2`, `subverso` `fda188f7`) build on 4.34.0 and are kept. ProofWidgets
-  is pinned to the revision Mathlib v4.34.0 uses (`v0.0.111`), BibtexQuery to the revision
-  doc-gen4 v4.34.0 uses.
+- `timaeus/v4.35.0` is `timaeus/v4.34.0` rebased onto upstream's `v4.35.0` branch at `5a5bfc7e`
+  (19 October 2026), the same 11 commits. Upstream now renders a references panel for proof
+  blocks (proof attachments), so the fork's declaration links apply to that panel too.
+- Toolchain: `leanprover/lean4:v4.35.0`. `verso`, `verso-slides` and `subverso` are pinned to
+  their v4.35.0 release tags (upstream's branch still pins the rc4 tags). ProofWidgets is pinned
+  to the revision Mathlib v4.35.0 uses (`v0.0.116`). BibtexQuery comes from
+  `resolutionorg/BibtexQuery` branch `core-string-contains-v4.35.0`: the revision doc-gen4 v4.35.0
+  uses (`876b844a`) plus one commit that replaces its `String.containsSubstr` with core
+  `String.contains`. Upstream's definition clashes with Batteries' deprecated
+  `String.containsSubstr` in any chapter that imports all of Mathlib ("environment already
+  contains"). Return to dupuisf/BibtexQuery once upstream takes the change.
 
 ## What Timaeus added
 
@@ -346,7 +353,7 @@ Tests: `tests/VersoBlueprintTests/BlueprintBibtex.lean` (fixture `tests/VersoBlu
 [[require]]
 name = "VersoBlueprint"
 git = "https://github.com/timaeus-research/verso-blueprint.git"
-rev = "<commit on timaeus/v4.34.0>"
+rev = "<commit on timaeus/v4.35.0>"
 ```
 
 ## Syncing with upstream
@@ -356,6 +363,6 @@ start `timaeus/v4.NN.M` from upstream's branch for that release and rebase the f
 it, as `timaeus/v4.34.0` was (see Provenance); a fork branch that is already published is not
 rewritten.
 
-Known test failures, also on `timaeus/v4.33.1`: `ReaderImported` (uses the dropped
+Known test failures, also on `timaeus/v4.34.0` and `timaeus/v4.33.1`: `ReaderImported` (uses the dropped
 `clarification` directive) and `BlueprintPreviewWiring/Summary` (its fixture namespace starts with
 `Verso`, which `ExternalRef.displayOpenNamespaces` filters out).
