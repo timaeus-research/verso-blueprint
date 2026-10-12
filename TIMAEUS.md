@@ -25,8 +25,12 @@ of the branch for their toolchain. `timaeus/v4.33.1` is kept for consumers on Le
 - Toolchain: `leanprover/lean4:v4.34.0`. Upstream's branch moved from 4.34.0-rc2 straight to
   4.34.1; its dependency pins (`verso` at the post-rc2 split-page anchor fix `52c8c955`,
   `verso-slides` `v4.34.0-rc2`, `subverso` `fda188f7`) build on 4.34.0 and are kept. ProofWidgets
-  is pinned to the revision Mathlib v4.34.0 uses (`v0.0.111`), BibtexQuery to the revision
-  doc-gen4 v4.34.0 uses.
+  is pinned to the revision Mathlib v4.34.0 uses (`v0.0.111`). BibtexQuery comes from
+  `resolutionorg/BibtexQuery` branch `core-string-contains`: the revision doc-gen4 v4.34.0 uses
+  (`4d8616fd`) plus one commit that replaces its `String.containsSubstr` with core
+  `String.contains`. Upstream's definition clashes with Batteries' deprecated
+  `String.containsSubstr` in any chapter that imports all of Mathlib ("environment already
+  contains"). Return to dupuisf/BibtexQuery once upstream takes the change.
 
 ## What Timaeus added
 

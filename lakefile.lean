@@ -10,7 +10,9 @@ require subverso from git "https://github.com/leanprover/subverso"@"fda188f7329f
 -- blueprint project resolves a single ProofWidgets.
 require proofwidgets from git "https://github.com/leanprover-community/ProofWidgets4"@"v0.0.111"
 -- BibTeX parsing and formatting for `blueprint_bibliography_file` (brings fgdorais/lean4-unicode-basic).
-require BibtexQuery from git "https://github.com/dupuisf/BibtexQuery"@"4d8616fd4870d0a3453d845770833eac7951fe1c"
+-- resolutionorg fork: doc-gen4 v4.34.0's revision plus `core-string-contains`, which drops
+-- `String.containsSubstr` (it clashes with Batteries' deprecated one under `import Mathlib`).
+require BibtexQuery from git "https://github.com/resolutionorg/BibtexQuery"@"9d4ae3a34072cbfb1ae0a99aa1fe06119e23df63"
 
 package VersoBlueprint where
   leanOptions := #[⟨`experimental.module, true⟩]
