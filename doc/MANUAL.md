@@ -971,7 +971,9 @@ reader: an HTML page whose linked declarations were all rendered with the same
 open namespaces gets one legend block at the top ("Lean names in this section
 are shown relative to `A`, `B`"); a
 page whose declarations disagree gets the namespaces on every rendered row
-instead. The pass takes the renderer's `htmlDepth` (Verso's default is 2) so
+instead. The legend leaves out the namespaces under `Verso`, `Informal` and `Lean`,
+which chapters open for the directives rather than for their mathematics;
+names are still shortened against them. The pass takes the renderer's `htmlDepth` (Verso's default is 2) so
 that it knows which parts share a page; pass the same value to both. Apply the
 pass to the document in the generator:
 

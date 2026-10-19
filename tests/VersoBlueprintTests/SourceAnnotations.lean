@@ -257,17 +257,18 @@ private def removeLedger : IO Unit := do
   removeLedger
   let html ← renderManualDocHtmlString impls sourceAnnotationsDoc
   let succ := "Verso.VersoBlueprintTests.SourceAnnotations.srcSucc"
+  let short := "VersoBlueprintTests.SourceAnnotations.srcSucc"
   pure <|
     -- two boxes at src.succ; at src.gt the hand-written one, then two from each declaration
     countSubstr html "class=\"bp-editorial\"" == 7 &&
     -- `data-decl` is also on the embedded declarations (srcSucc twice, srcSucc_gt once)
     countSubstr html s!"data-decl=\"{succ}\"" == 4 + 2 &&
     countSubstr html s!"data-decl=\"{succ}_gt\"" == 2 + 1 &&
-    -- the declaration is named only where the node embeds several (relative to the open
-    -- namespaces shown to a reader, which leave out `Verso`)
+    -- the declaration is named only where the node embeds several, relative to the open
+    -- namespaces (here `open Verso`; the enclosing `namespace` is not an `open`)
     countSubstr html "class=\"bp-editorial-decl\"" == 4 &&
-    countSubstr html s!"bp-editorial-decl\"><code>{succ}_gt</code>" == 2 &&
-    countSubstr html s!"bp-editorial-decl\"><code>{succ}</code>" == 2 &&
+    countSubstr html s!"bp-editorial-decl\"><code>{short}_gt</code>" == 2 &&
+    countSubstr html s!"bp-editorial-decl\"><code>{short}</code>" == 2 &&
     appearsBefore html "aria-label=\"Interpretation\"" "aria-label=\"Correction\"" &&
     appearsBefore html "A hand-written annotation." "aria-label=\"Interpretation\"" &&
     hasSubstr html "aria-label=\"Formalisation note\"" &&

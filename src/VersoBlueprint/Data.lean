@@ -499,15 +499,18 @@ structure ExternalRef where
   render : ExternalDeclRender := .error (.moduleUnavailable canonical)
 deriving Repr, Inhabited, ToJson, FromJson, Quote
 
-/-- The open namespaces worth showing a reader: Verso's own document machinery is dropped. -/
+/-- The open namespaces worth listing in a page's legend: Verso's own document machinery, which
+every chapter opens for the directives, is dropped. Names are shortened against all of
+`openNamespaces` (`displayName`), as Lean shortens the signature and body. -/
 def ExternalRef.displayOpenNamespaces (ref : ExternalRef) : List Name :=
   ref.openNamespaces.filter fun n =>
     let root := n.getRoot
     root != `Verso && root != `Informal && root != `Lean
 
-/-- The declaration's name as the page shows it: relative to the namespaces that were open. -/
+/-- The declaration's name as the page shows it: relative to the namespaces that were open, all of
+them, so that the header agrees with the signature and body Lean prints. -/
 def ExternalRef.displayName (ref : ExternalRef) : Name :=
-  Informal.shortenName ref.displayOpenNamespaces ref.canonical
+  Informal.shortenName ref.openNamespaces ref.canonical
 
 def ExternalRef.ofName (name : Name) (origin : ExternalOrigin := .directiveLean) : ExternalRef :=
   { written := name, canonical := name.eraseMacroScopes, origin, kind := .definition }
