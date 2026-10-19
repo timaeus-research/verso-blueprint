@@ -361,8 +361,5 @@ rev = "<commit on timaeus/v4.35.0>"
 Upstream keeps one branch per Lean release (`v4.33.0`, `v4.34.0`, ...). For a new Lean release,
 start `timaeus/v4.NN.M` from upstream's branch for that release and rebase the fork's commits onto
 it, as `timaeus/v4.34.0` was (see Provenance); a fork branch that is already published is not
-rewritten.
-
-Known test failures, also on `timaeus/v4.34.0` and `timaeus/v4.33.1`: `ReaderImported` (uses the dropped
-`clarification` directive) and `BlueprintPreviewWiring/Summary` (its fixture namespace starts with
-`Verso`, which `ExternalRef.displayOpenNamespaces` filters out).
+rewritten. The whole test suite (`lake build`, which builds `VersoBlueprintTests`) passes on every
+branch; a rebase that breaks a test fixes it before the branch is published.

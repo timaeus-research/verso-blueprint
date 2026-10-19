@@ -12,7 +12,7 @@ paperIdentity := some { label := "Definition 2", href := "source/paper.pdf#page=
 %%%
 An explicitly identified source definition.
 
-:::clarification
+:::meta
 The identity belongs to the enclosing definition.
 :::
 ::::
